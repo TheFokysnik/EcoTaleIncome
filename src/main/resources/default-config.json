@@ -1,0 +1,159 @@
+{
+  "General": {
+    "DebugMode": false,
+    "Language": "ru",
+    "EconomyProvider": "ecotale",
+    "AllowedWorlds": [],
+    "MessagePrefix": "<dark_gray>[<gold>$<dark_gray>]",
+    "NotifyOnReward": true,
+    "NotifyFormat": "<green>+{amount} <dark_gray>• <gray>{source}"
+  },
+
+  "MobKills": {
+    "Enabled": true,
+    "UseRPGLevelScaling": true,
+    "BaseTiers": {
+      "CRITTER":   { "Min": 0.5,  "Max": 1.5 },
+      "PASSIVE":   { "Min": 1.0,  "Max": 3.0 },
+      "HOSTILE":   { "Min": 3.0,  "Max": 8.0 },
+      "ELITE":     { "Min": 8.0,  "Max": 15.0 },
+      "MINIBOSS":  { "Min": 15.0, "Max": 30.0 },
+      "BOSS":      { "Min": 30.0, "Max": 75.0 },
+      "WORLDBOSS": { "Min": 75.0, "Max": 200.0 }
+    },
+    "LevelScaling": {
+      "MuchLowerPenalty": 0.1,
+      "LowerPenalty": 0.4,
+      "SlightlyLowerPenalty": 0.7,
+      "EqualMultiplier": 1.0,
+      "SlightlyHigherBonus": 1.3,
+      "HigherBonus": 1.6,
+      "MuchHigherBonus": 2.0
+    },
+    "EntityOverrides": {
+      "Dragon_Fire":  { "Min": 150.0, "Max": 300.0 },
+      "Dragon_Frost": { "Min": 150.0, "Max": 300.0 }
+    },
+    "EntityBlacklist": [
+      "Dummy_Target",
+      "NPC_Villager"
+    ]
+  },
+
+  "Mining": {
+    "Enabled": true,
+    "ToolRequired": true,
+    "DepthBonus": {
+      "Enabled": true,
+      "BonusPerBlock": 0.005,
+      "MaxBonus": 0.5,
+      "BaselineY": 64
+    },
+    "Ores": {
+      "Copper":     { "Min": 0.5,  "Max": 1.5 },
+      "Coal":       { "Min": 0.5,  "Max": 1.5 },
+      "Iron":       { "Min": 1.5,  "Max": 3.0 },
+      "Silver":     { "Min": 2.0,  "Max": 4.0 },
+      "Gold":       { "Min": 3.0,  "Max": 6.0 },
+      "Cobalt":     { "Min": 4.0,  "Max": 8.0 },
+      "Thorium":    { "Min": 5.0,  "Max": 10.0 },
+      "Adamantite": { "Min": 8.0,  "Max": 15.0 },
+      "Mithril":    { "Min": 8.0,  "Max": 15.0 },
+      "Onyxium":    { "Min": 10.0, "Max": 20.0 },
+      "Diamond":    { "Min": 12.0, "Max": 25.0 },
+      "Emerald":    { "Min": 6.0,  "Max": 12.0 },
+      "Default":   { "Min": 0.5,  "Max": 1.5 }
+    }
+  },
+
+  "Woodcutting": {
+    "Enabled": true,
+    "ToolRequired": false,
+    "Trees": {
+      "Softwood":  { "Min": 0.3, "Max": 0.8 },
+      "Hardwood":  { "Min": 0.5, "Max": 1.0 },
+      "Ash":       { "Min": 0.5, "Max": 1.0 },
+      "Fir":       { "Min": 0.3, "Max": 0.8 },
+      "Oak":       { "Min": 0.3, "Max": 0.8 },
+      "Birch":     { "Min": 0.3, "Max": 0.8 },
+      "Spruce":    { "Min": 0.3, "Max": 0.8 },
+      "Pine":      { "Min": 0.3, "Max": 0.8 },
+      "Acacia":    { "Min": 0.5, "Max": 1.0 },
+      "Willow":    { "Min": 0.5, "Max": 1.0 },
+      "Palm":      { "Min": 0.5, "Max": 1.0 },
+      "Jungle":    { "Min": 0.5, "Max": 1.0 },
+      "Mahogany":  { "Min": 0.8, "Max": 1.5 },
+      "Ebony":     { "Min": 1.0, "Max": 2.0 },
+      "Deadwood":  { "Min": 0.2, "Max": 0.5 },
+      "Kweebec":   { "Min": 0.8, "Max": 1.5 },
+      "Dead":      { "Min": 0.2, "Max": 0.5 },
+      "Burnt":     { "Min": 0.2, "Max": 0.5 },
+      "Wood":      { "Min": 0.3, "Max": 0.6 },
+      "Log":       { "Min": 0.3, "Max": 0.6 },
+      "Default":   { "Min": 0.3, "Max": 0.6 }
+    }
+  },
+
+  "Farming": {
+    "Enabled": true,
+    "RequireFullyGrown": true,
+    "HarvestMethod": "both",
+    "Crops": {
+      "Wheat":       { "Min": 0.3, "Max": 0.8 },
+      "Carrot":      { "Min": 0.3, "Max": 0.8 },
+      "Potato":      { "Min": 0.3, "Max": 0.8 },
+      "Beet":        { "Min": 0.4, "Max": 1.0 },
+      "Onion":       { "Min": 0.4, "Max": 1.0 },
+      "Tomato":      { "Min": 0.5, "Max": 1.2 },
+      "Corn":        { "Min": 0.5, "Max": 1.2 },
+      "Cotton":      { "Min": 0.5, "Max": 1.2 },
+      "Pumpkin":     { "Min": 0.6, "Max": 1.5 },
+      "Melon":       { "Min": 0.6, "Max": 1.5 },
+      "Berry":       { "Min": 0.8, "Max": 2.0 },
+      "Herb":        { "Min": 1.0, "Max": 2.5 },
+      "Cactus":      { "Min": 0.3, "Max": 0.6 },
+      "Mushroom":    { "Min": 0.8, "Max": 1.8 },
+      "SugarCane":   { "Min": 0.3, "Max": 0.6 },
+      "Default":     { "Min": 0.2, "Max": 0.5 }
+    }
+  },
+
+  "CustomBlocks": {
+    "Enabled": false,
+    "Blocks": {
+      "example_custom_ore": { "Min": 2.0, "Max": 5.0, "Category": "ore" },
+      "example_custom_wood": { "Min": 0.5, "Max": 1.5, "Category": "wood" },
+      "example_custom_crop": { "Min": 0.3, "Max": 0.8, "Category": "crop" },
+      "example_generic_block": { "Min": 1.0, "Max": 3.0, "Category": "generic" }
+    }
+  },
+
+  "GenericEconomy": {
+    "_comment": "Reflection-адаптер для любого плагина экономики. Установите EconomyProvider: generic и заполните поля ниже.",
+    "ClassName": "",
+    "InstanceMethod": "",
+    "DepositMethod": "deposit",
+    "BalanceMethod": "getBalance",
+    "DepositHasReason": false
+  },
+
+  "Multipliers": {
+    "Groups": {
+      "VIP":     1.25,
+      "Premium": 1.50,
+      "Admin":   1.00
+    }
+  },
+
+  "Protection": {
+    "MaxRewardsPerMinute": 60,
+    "SameBlockCooldownMs": 500,
+    "AntiFarm": {
+      "Enabled": true,
+      "WindowSeconds": 120,
+      "ThresholdKills": 25,
+      "PenaltyMultiplier": 0.1,
+      "DecayRate": 0.05
+    }
+  }
+}

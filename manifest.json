@@ -1,0 +1,20 @@
+{
+    "Group": "com.crystalrealm",
+    "Name": "EcoTaleIncome",
+    "Version": "1.0.1",
+    "Description": "Earn currency by killing mobs, mining ores, chopping trees, and harvesting crops. Direct deposit to Ecotale balance with RPG Leveling level-scaling support.",
+    "Main": "com.crystalrealm.ecotaleincome.EcoTaleIncomePlugin",
+    "Authors": [
+        {
+            "Name": "CrystalRealm",
+            "Url": "https://hytale-server.pro-gamedev.ru"
+        }
+    ],
+    "ServerVersion": ">=1.0.0",
+    "Dependencies": {
+        "Ecotale:Ecotale": ">=1.0.0"
+    },
+    "OptionalDependencies": {
+        "Zuxaw:RPGLeveling": ">=0.2.0"
+    }
+}

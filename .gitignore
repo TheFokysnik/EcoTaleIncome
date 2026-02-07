@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Java
+*.class
+*.log
+*.jar
+*.war
+*.ear
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Mac
+.DS_Store
+
+# libs and local dependencies
+libs/

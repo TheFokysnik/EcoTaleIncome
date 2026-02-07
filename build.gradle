@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.crystalrealm'
+version = '1.0.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+sourceSets {
+    stubs {
+        java.srcDirs = ['src/stubs/java']
+    }
+}
+
+dependencies {
+
+    compileOnly sourceSets.stubs.output
+
+    // JSR-305 annotations
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
+    // Gson for JSON config
+    compileOnly 'com.google.code.gson:gson:2.10.1'
+
+    // Stubs тоже должны видеть JSR-305
+    stubsCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+}
+
+jar {
+    archiveBaseName.set('EcoTaleIncome')
+    archiveVersion.set(version)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from('src/main/resources') {
+        include 'default-config.json'
+        include 'lang/**'
+    }
+
+    // Hytale plugin manifest (должен быть в корне JAR)
+    from('.') {
+        include 'manifest.json'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
