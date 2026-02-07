@@ -430,6 +430,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 `hytale.pro-gamedev.ru`
 
 [![Website](https://img.shields.io/badge/Website-hytale--server.pro--gamedev.ru-0ea5e9?style=flat-square)](https://hytale-server.pro-gamedev.ru)
-[![CurseForge](https://img.shields.io/badge/CurseForge-Projects-f16436?style=flat-square&logo=curseforge)](https://www.curseforge.com/members/th)
+[![CurseForge](https://img.shields.io/badge/CurseForge-Projects-f16436?style=flat-square&logo=curseforge)](https://www.curseforge.com/members/thefokysnik/projects)
 
 </div>
