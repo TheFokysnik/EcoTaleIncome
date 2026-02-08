@@ -1,0 +1,78 @@
+﻿{
+  "prefix": "<dark_gray>[<gold>$<dark_gray>]",
+
+  "reward.mob": "<yellow>[MOB] <green>+{amount} <dark_gray>• <gray>{source}",
+  "reward.ore": "<yellow>[ORE] <green>+{amount} <dark_gray>• <gray>{source}",
+  "reward.wood": "<gold>[WOOD] <green>+{amount} <dark_gray>• <gray>{source}",
+  "reward.crop": "<dark_green>[FARM] <green>+{amount} <dark_gray>• <gray>{source}",
+
+  "icon.mob": "[MOB]",
+  "icon.ore": "[ORE]",
+  "icon.wood": "[WOOD]",
+  "icon.crop": "[FARM]",
+  "icon.default": "*",
+
+  "cmd.no_permission": "<red>X <gray>Недостаточно прав.",
+  "cmd.player_not_found": "<red>X <gray>Игрок '<white>{name}<gray>' не найден.",
+
+  "cmd.income.header": "<yellow><bold> ДОХОД</bold> <dark_gray>--- <gray>Статус",
+  "cmd.income.balance": "  <gray>Баланс     <dark_gray>| <white>{amount} <gold>монет",
+  "cmd.income.multiplier": "  <gray>Множитель  <dark_gray>| {value}",
+  "cmd.income.rewards_per_min": "  <gray>Наград/мин <dark_gray>| <white>{current} <dark_gray>/ <white>{max}",
+  "cmd.income.remaining": "  <gray>Осталось   <dark_gray>| <green>{count}",
+  "cmd.income.footer": "<dark_gray>-----------------------------",
+
+  "cmd.info.header": "<yellow><bold> ДОХОД</bold> <dark_gray>--- <gray>Информация",
+  "cmd.info.version": "  <gray>Версия     <dark_gray>| <white>{version}",
+  "cmd.info.ecotale": "  <gray>Ecotale    <dark_gray>| {status}",
+  "cmd.info.rpg": "  <gray>RPG Level  <dark_gray>| {status}",
+  "cmd.info.modules": "",
+  "cmd.info.mob_kills": "  <gray>Мобы       <dark_gray>| {status}",
+  "cmd.info.mining": "  <gray>Руда       <dark_gray>| {status}",
+  "cmd.info.woodcutting": "  <gray>Деревья    <dark_gray>| {status}",
+  "cmd.info.farming": "  <gray>Фермерство <dark_gray>| {status}",
+  "cmd.info.protection": "",
+  "cmd.info.rate_limit": "  <gray>Лимит      <dark_gray>| <white>{value}<gray>/мин",
+  "cmd.info.antifarm": "  <gray>Анти-фарм  <dark_gray>| {status}",
+  "cmd.info.debug": "  <gray>Дебаг      <dark_gray>| {status}",
+  "cmd.info.footer": "<dark_gray>-----------------------------",
+
+  "cmd.stats.header": "<yellow><bold> ДОХОД</bold> <dark_gray>--- <gray>Стата: <white>{name}",
+  "cmd.stats.balance": "  <gray>Баланс     <dark_gray>| <white>{amount} <gold>монет",
+  "cmd.stats.multiplier": "  <gray>Множитель  <dark_gray>| {value}",
+  "cmd.stats.rewards_min": "  <gray>Наград/мин <dark_gray>| <white>{count}",
+  "cmd.stats.remaining": "  <gray>Осталось   <dark_gray>| <green>{count}",
+  "cmd.stats.antifarm_header": "",
+  "cmd.stats.antifarm_mob": "  <gray>АФ: Мобы  <dark_gray>| {value}",
+  "cmd.stats.antifarm_ore": "  <gray>АФ: Руда  <dark_gray>| {value}",
+  "cmd.stats.antifarm_wood": "  <gray>АФ: Дерев <dark_gray>| {value}",
+  "cmd.stats.antifarm_crop": "  <gray>АФ: Ферма <dark_gray>| {value}",
+  "cmd.stats.footer": "<dark_gray>-----------------------------",
+
+  "cmd.reload.success": "<green>OK <gray>Конфигурация перезагружена.",
+  "cmd.reload.fail": "<red>X <gray>Ошибка перезагрузки.",
+
+  "cmd.debug.toggled": "<gray>Режим отладки: {state}",
+  "cmd.debug.on": "<green>* ВКЛ",
+  "cmd.debug.off": "<red>* ВЫКЛ",
+
+  "cmd.help.header": "<yellow><bold> ДОХОД</bold> <dark_gray>--- <gray>Помощь",
+  "cmd.help.income": "  <yellow>/income        <dark_gray>- <gray>Ваш статус",
+  "cmd.help.info": "  <yellow>/income info   <dark_gray>- <gray>Инфо о плагине",
+  "cmd.help.stats": "  <yellow>/income stats  <dark_gray>- <gray>Статистика",
+  "cmd.help.stats_other": "  <yellow>/income stats <dark_gray><<gray>ник<dark_gray>> <dark_gray>- <gray>Стата игрока",
+  "cmd.help.reload": "  <yellow>/income reload <dark_gray>- <gray>Перезагрузка <red>[admin]",
+  "cmd.help.debug": "  <yellow>/income debug  <dark_gray>- <gray>Дебаг-режим <red>[admin]",
+  "cmd.help.help": "  <yellow>/income help   <dark_gray>- <gray>Справка",
+  "cmd.help.lang": "  <yellow>/income lang   <dark_gray>- <gray>Сменить язык",
+  "cmd.help.footer": "<dark_gray>-----------------------------",
+
+  "cmd.lang.changed": "<green>OK <gray>Язык: <white>Русский",
+  "cmd.lang.invalid": "<red>X <gray>Языки: <white>en<dark_gray>, <white>ru",
+
+  "status.connected": "<green>* Подключено",
+  "status.disconnected": "<red>* Отключено",
+  "status.not_installed": "<dark_gray>* Не установлено",
+  "status.enabled": "<green>OK",
+  "status.disabled": "<red>X"
+}

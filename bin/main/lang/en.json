@@ -1,0 +1,78 @@
+﻿{
+  "prefix": "<dark_gray>[<gold>$<dark_gray>]",
+
+  "reward.mob": "<yellow>[MOB] <green>+{amount} <dark_gray>| <gray>{source}",
+  "reward.ore": "<yellow>[ORE] <green>+{amount} <dark_gray>| <gray>{source}",
+  "reward.wood": "<gold>[WOOD] <green>+{amount} <dark_gray>| <gray>{source}",
+  "reward.crop": "<dark_green>[FARM] <green>+{amount} <dark_gray>| <gray>{source}",
+
+  "icon.mob": "[MOB]",
+  "icon.ore": "[ORE]",
+  "icon.wood": "[WOOD]",
+  "icon.crop": "[FARM]",
+  "icon.default": "*",
+
+  "cmd.no_permission": "<red>X <gray>You don't have permission.",
+  "cmd.player_not_found": "<red>X <gray>Player '<white>{name}<gray>' not found.",
+
+  "cmd.income.header": "<yellow><bold>INCOME</bold> <dark_gray>--- <gray>Status",
+  "cmd.income.balance": "  <gray>Balance     <dark_gray>| <white>{amount} <gold>coins",
+  "cmd.income.multiplier": "  <gray>Multiplier  <dark_gray>| {value}",
+  "cmd.income.rewards_per_min": "  <gray>Rewards/min <dark_gray>| <white>{current} <dark_gray>/ <white>{max}",
+  "cmd.income.remaining": "  <gray>Remaining   <dark_gray>| <green>{count}",
+  "cmd.income.footer": "<dark_gray>-----------------------------",
+
+  "cmd.info.header": "<yellow><bold>INCOME</bold> <dark_gray>--- <gray>Information",
+  "cmd.info.version": "  <gray>Version    <dark_gray>| <white>{version}",
+  "cmd.info.ecotale": "  <gray>Ecotale    <dark_gray>| {status}",
+  "cmd.info.rpg": "  <gray>RPG Level  <dark_gray>| {status}",
+  "cmd.info.modules": "",
+  "cmd.info.mob_kills": "  <gray>Mob Kills  <dark_gray>| {status}",
+  "cmd.info.mining": "  <gray>Mining     <dark_gray>| {status}",
+  "cmd.info.woodcutting": "  <gray>Woodcut    <dark_gray>| {status}",
+  "cmd.info.farming": "  <gray>Farming    <dark_gray>| {status}",
+  "cmd.info.protection": "",
+  "cmd.info.rate_limit": "  <gray>Rate Limit <dark_gray>| <white>{value}<gray>/min",
+  "cmd.info.antifarm": "  <gray>Anti-farm  <dark_gray>| {status}",
+  "cmd.info.debug": "  <gray>Debug      <dark_gray>| {status}",
+  "cmd.info.footer": "<dark_gray>-----------------------------",
+
+  "cmd.stats.header": "<yellow><bold>INCOME</bold> <dark_gray>--- <gray>Stats: <white>{name}",
+  "cmd.stats.balance": "  <gray>Balance     <dark_gray>| <white>{amount} <gold>coins",
+  "cmd.stats.multiplier": "  <gray>Multiplier  <dark_gray>| {value}",
+  "cmd.stats.rewards_min": "  <gray>Rewards/min <dark_gray>| <white>{count}",
+  "cmd.stats.remaining": "  <gray>Remaining   <dark_gray>| <green>{count}",
+  "cmd.stats.antifarm_header": "",
+  "cmd.stats.antifarm_mob": "  <gray>AF: Mobs   <dark_gray>| {value}",
+  "cmd.stats.antifarm_ore": "  <gray>AF: Ore    <dark_gray>| {value}",
+  "cmd.stats.antifarm_wood": "  <gray>AF: Wood   <dark_gray>| {value}",
+  "cmd.stats.antifarm_crop": "  <gray>AF: Crops  <dark_gray>| {value}",
+  "cmd.stats.footer": "<dark_gray>-----------------------------",
+
+  "cmd.reload.success": "<green>OK <gray>Configuration reloaded.",
+  "cmd.reload.fail": "<red>FAIL <gray>Reload failed. Check logs.",
+
+  "cmd.debug.toggled": "<gray>Debug mode: {state}",
+  "cmd.debug.on": "<green>ON",
+  "cmd.debug.off": "<red>OFF",
+
+  "cmd.help.header": "<yellow><bold>INCOME</bold> <dark_gray>--- <gray>Help",
+  "cmd.help.income": "  <yellow>/income        <dark_gray>- <gray>Your status",
+  "cmd.help.info": "  <yellow>/income info   <dark_gray>- <gray>Plugin info",
+  "cmd.help.stats": "  <yellow>/income stats  <dark_gray>- <gray>Statistics",
+  "cmd.help.stats_other": "  <yellow>/income stats <dark_gray><<gray>player<dark_gray>> <dark_gray>- <gray>Player stats",
+  "cmd.help.reload": "  <yellow>/income reload <dark_gray>- <gray>Reload config <red>[admin]",
+  "cmd.help.debug": "  <yellow>/income debug  <dark_gray>- <gray>Toggle debug <red>[admin]",
+  "cmd.help.help": "  <yellow>/income help   <dark_gray>- <gray>This page",
+  "cmd.help.lang": "  <yellow>/income lang   <dark_gray>- <gray>Change language",
+  "cmd.help.footer": "<dark_gray>-----------------------------",
+
+  "cmd.lang.changed": "<green>OK <gray>Language set to: <white>English",
+  "cmd.lang.invalid": "<red>X <gray>Available: <white>en<dark_gray>, <white>ru",
+
+  "status.connected": "<green>Connected",
+  "status.disconnected": "<red>Offline",
+  "status.not_installed": "<dark_gray>Not installed",
+  "status.enabled": "<green>ON",
+  "status.disabled": "<red>OFF"
+}
