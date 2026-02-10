@@ -6,10 +6,11 @@
 
 Reward players for **mob kills**, **mining**, **woodcutting** & **farming** — with RPG level-scaling, VIP multipliers, and a pluggable economy system.
 
-[![Hytale Server Mod](https://img.shields.io/badge/Hytale-Server%20Mod-0ea5e9?style=for-the-badge)](https://hytale.com)
-[![Version](https://img.shields.io/badge/version-1.0.1-10b981?style=for-the-badge)](https://github.com/CrystalRealm/EcoTaleIncome/releases)
-[![Java](https://img.shields.io/badge/Java-17+-f97316?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org)
-[![License](https://img.shields.io/badge/license-MIT-a855f7?style=for-the-badge)](LICENSE)
+![Hytale Server Mod](https://img.shields.io/badge/Hytale-Server%20Mod-0ea5e9?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.0-10b981?style=for-the-badge)
+![Java](https://img.shields.io/badge/Java-17+-f97316?style=for-the-badge&logo=openjdk&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-a855f7?style=for-the-badge)
+![Ecotale](https://img.shields.io/badge/Ecotale-1.0.7-6366f1?style=for-the-badge)
 
 <br>
 
@@ -53,7 +54,7 @@ Reward players for **mob kills**, **mining**, **woodcutting** & **farming** — 
 ```bash
 # 1. Download the latest release
 # 2. Drop into your server's mods/ folder
-cp EcoTaleIncome-1.0.1.jar /server/mods/
+cp EcoTaleIncome-1.1.0.jar /server/mods/
 
 # 3. Start the server — config is created automatically
 # 4. Edit the config to your liking
@@ -72,7 +73,9 @@ nano mods/com.crystalrealm_EcoTaleIncome/EcoTaleIncome.json
 | `/income stats <player>` | Other player's stats | `ecotaleincome.command.stats.others` |
 | `/income reload` | Reload configuration | `ecotaleincome.admin.reload` |
 | `/income debug` | Toggle debug mode | `ecotaleincome.admin.debug` |
-| `/income lang <en\|ru>` | Switch language | — |
+| `/income lang` | Show language usage hint | — |
+| `/income langen` | Switch to English | — |
+| `/income langru` | Switch to Russian | — |
 | `/income help` | Command reference | — |
 
 ## 🔐 Permissions
@@ -281,7 +284,7 @@ EcoTaleIncome provides a public Java API for integrating custom economy plugins.
 
 ```gradle
 dependencies {
-    compileOnly files('libs/EcoTaleIncome-1.0.1.jar')
+    compileOnly files('libs/EcoTaleIncome-1.1.0.jar')
 }
 ```
 
@@ -342,7 +345,7 @@ cd EcoTaleIncome
 ./gradlew jar
 ```
 
-Output: `build/libs/EcoTaleIncome-1.0.1.jar`
+Output: `build/libs/EcoTaleIncome-1.1.0.jar`
 
 > [!NOTE]
 > The project uses compile-only stubs for Hytale Server API, Ecotale, and RPG Leveling (located in `src/stubs/java/`). No external JAR downloads needed.
@@ -417,9 +420,19 @@ Contributions are welcome! Feel free to:
 - 🌐 More language translations
 - ⚡ Performance optimizations
 
-## 📄 License
+## � License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+## �📝 Changelog
+
+### v1.1.0 — 2026-02-10
+- **New:** Language subcommands — `/income langen`, `/income langru` (replaces `/income lang <code>`)
+- **Fix:** `NoSuchFieldError: ArgTypes.STRING` crash that prevented plugin from loading
+- `/income lang` now shows usage hint with new syntax
+
+### v1.0.1
+- Initial release
 
 ---
 

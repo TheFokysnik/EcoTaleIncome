@@ -64,10 +64,11 @@
   "cmd.help.reload": "  <yellow>/income reload <dark_gray>- <gray>Перезагрузка <red>[admin]",
   "cmd.help.debug": "  <yellow>/income debug  <dark_gray>- <gray>Дебаг-режим <red>[admin]",
   "cmd.help.help": "  <yellow>/income help   <dark_gray>- <gray>Справка",
-  "cmd.help.lang": "  <yellow>/income lang   <dark_gray>- <gray>Сменить язык",
+  "cmd.help.lang": "  <yellow>/income langen|langru <dark_gray>- <gray>Сменить язык",
   "cmd.help.footer": "<dark_gray>-----------------------------",
 
   "cmd.lang.changed": "<green>OK <gray>Язык: <white>Русский",
+  "cmd.lang.usage": "<yellow>Используйте: <white>/income langen <gray>или <white>/income langru",
   "cmd.lang.invalid": "<red>X <gray>Языки: <white>en<dark_gray>, <white>ru",
 
   "status.connected": "<green>* Подключено",

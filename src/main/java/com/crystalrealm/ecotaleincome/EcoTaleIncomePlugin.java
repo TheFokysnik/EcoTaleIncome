@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * @author CrystalRealm
- * @version 1.0.1
+ * @version 1.1.0
  */
 public class EcoTaleIncomePlugin extends JavaPlugin {
 
@@ -237,7 +237,7 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
 
     @Nonnull
     public String getVersion() {
-        return "1.0.1";
+        return "1.1.0";
     }
 
     @Nonnull

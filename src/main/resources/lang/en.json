@@ -64,10 +64,11 @@
   "cmd.help.reload": "  <yellow>/income reload <dark_gray>- <gray>Reload config <red>[admin]",
   "cmd.help.debug": "  <yellow>/income debug  <dark_gray>- <gray>Toggle debug <red>[admin]",
   "cmd.help.help": "  <yellow>/income help   <dark_gray>- <gray>This page",
-  "cmd.help.lang": "  <yellow>/income lang   <dark_gray>- <gray>Change language",
+  "cmd.help.lang": "  <yellow>/income langen|langru <dark_gray>- <gray>Change language",
   "cmd.help.footer": "<dark_gray>-----------------------------",
 
   "cmd.lang.changed": "<green>OK <gray>Language set to: <white>English",
+  "cmd.lang.usage": "<yellow>Usage: <white>/income langen <gray>or <white>/income langru",
   "cmd.lang.invalid": "<red>X <gray>Available: <white>en<dark_gray>, <white>ru",
 
   "status.connected": "<green>Connected",

@@ -1,7 +1,7 @@
 {
     "Group": "com.crystalrealm",
     "Name": "EcoTaleIncome",
-    "Version": "1.0.1",
+    "Version": "1.1.0",
     "Description": "Earn currency by killing mobs, mining ores, chopping trees, and harvesting crops. Direct deposit to Ecotale balance with RPG Leveling level-scaling support.",
     "Main": "com.crystalrealm.ecotaleincome.EcoTaleIncomePlugin",
     "Authors": [

@@ -56,6 +56,8 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
         addSubCommand(new ReloadSubCommand());
         addSubCommand(new DebugSubCommand());
         addSubCommand(new LangSubCommand());
+        addSubCommand(new LangEnSubCommand());
+        addSubCommand(new LangRuSubCommand());
         addSubCommand(new HelpSubCommand());
     }
 
@@ -250,32 +252,48 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
         }
     }
 
-    // ── /income lang <en|ru> ────────────────────────────────────
+    // ── /income lang | /income langen | /income langru ──────────
 
     private class LangSubCommand extends AbstractAsyncCommand {
-        LangSubCommand() {
-            super("lang", "Changes player language");
-        }
+        LangSubCommand() { super("lang", "Show language usage"); }
 
         @Override
         public CompletableFuture<Void> executeAsync(CommandContext context) {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
+            context.sendMessage(msg(L(sender, "cmd.lang.usage")));
+            return CompletableFuture.completedFuture(null);
+        }
+    }
 
-            // Parse language code from raw input
-            String langCode = parseTrailingArg(context);
-            if (langCode == null || langCode.isEmpty()) {
-                context.sendMessage(msg(L(sender, "cmd.lang.invalid")));
-                return CompletableFuture.completedFuture(null);
-            }
-            langCode = langCode.toLowerCase();
+    private class LangEnSubCommand extends AbstractAsyncCommand {
+        LangEnSubCommand() { super("langen", "Switch to English"); }
 
-            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), langCode)) {
+        @Override
+        public CompletableFuture<Void> executeAsync(CommandContext context) {
+            if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
+            CommandSender sender = context.sender();
+            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), "en")) {
                 context.sendMessage(msg(L(sender, "cmd.lang.changed")));
             } else {
                 context.sendMessage(msg(L(sender, "cmd.lang.invalid")));
             }
+            return CompletableFuture.completedFuture(null);
+        }
+    }
 
+    private class LangRuSubCommand extends AbstractAsyncCommand {
+        LangRuSubCommand() { super("langru", "Switch to Russian"); }
+
+        @Override
+        public CompletableFuture<Void> executeAsync(CommandContext context) {
+            if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
+            CommandSender sender = context.sender();
+            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), "ru")) {
+                context.sendMessage(msg(L(sender, "cmd.lang.changed")));
+            } else {
+                context.sendMessage(msg(L(sender, "cmd.lang.invalid")));
+            }
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -324,7 +342,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
 
     /** Keywords that are command/subcommand names (not real arguments). */
     private static final java.util.Set<String> COMMAND_KEYWORDS = java.util.Set.of(
-            "income", "status", "info", "stats", "reload", "debug", "lang", "help"
+            "income", "status", "info", "stats", "reload", "debug", "lang", "langen", "langru", "help"
     );
 
     /**
