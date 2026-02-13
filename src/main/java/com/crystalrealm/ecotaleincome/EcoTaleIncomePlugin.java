@@ -16,6 +16,7 @@ import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
 import com.crystalrealm.ecotaleincome.rpg.RPGLevelingBridge;
 import com.crystalrealm.ecotaleincome.lang.LangManager;
 
+import com.crystalrealm.ecotaleincome.util.PermissionHelper;
 import com.crystalrealm.ecotaleincome.util.PluginLogger;
 import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
@@ -42,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * @author CrystalRealm
- * @version 1.1.0
+ * @version 1.1.1
  */
 public class EcoTaleIncomePlugin extends JavaPlugin {
 
@@ -93,6 +94,9 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
         configManager = new ConfigManager(getDataDirectory());
         configManager.loadOrCreate();
         LOGGER.info("Configuration loaded from {}", configManager.getConfigPath());
+
+        // 1b. Permission resolver (reads permissions.json for group-based checks)
+        PermissionHelper.getInstance().init(getDataDirectory());
 
         IncomeConfig config = configManager.getConfig();
 
@@ -237,7 +241,7 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
 
     @Nonnull
     public String getVersion() {
-        return "1.1.0";
+        return "1.1.1";
     }
 
     @Nonnull

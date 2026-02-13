@@ -8,6 +8,7 @@ import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
 import com.crystalrealm.ecotaleincome.util.MessageUtil;
 import com.crystalrealm.ecotaleincome.util.MiniMessageParser;
+import com.crystalrealm.ecotaleincome.util.PermissionHelper;
 
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
@@ -47,6 +48,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
 
     public IncomeCommandCollection(EcoTaleIncomePlugin plugin) {
         super("income", "EcoTaleIncome commands — manage income rewards");
+        this.setPermissionGroups("Adventure");
         this.plugin = plugin;
 
         // Register sub-commands via real Hytale API
@@ -75,7 +77,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
 
-            if (!sender.hasPermission("ecotaleincome.command.income")) {
+            if (!hasPermWithWildcard(sender, "ecotaleincome.command.income")) {
                 context.sendMessage(msg(L(sender, "cmd.no_permission")));
                 return CompletableFuture.completedFuture(null);
             }
@@ -117,7 +119,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
 
-            if (!sender.hasPermission("ecotaleincome.command.info")) {
+            if (!hasPermWithWildcard(sender, "ecotaleincome.command.info")) {
                 context.sendMessage(msg(L(sender, "cmd.no_permission")));
                 return CompletableFuture.completedFuture(null);
             }
@@ -172,14 +174,14 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
 
             if (targetName == null || targetName.isEmpty()) {
                 // Self stats
-                if (!sender.hasPermission("ecotaleincome.command.stats")) {
+                if (!hasPermWithWildcard(sender, "ecotaleincome.command.stats")) {
                     context.sendMessage(msg(L(sender, "cmd.no_permission")));
                     return CompletableFuture.completedFuture(null);
                 }
                 showStats(context, sender.getUuid(), sender.getDisplayName());
             } else {
                 // Other player stats
-                if (!sender.hasPermission("ecotaleincome.command.stats.others")) {
+                if (!hasPermWithWildcard(sender, "ecotaleincome.command.stats.others")) {
                     context.sendMessage(msg(L(sender, "cmd.no_permission")));
                     return CompletableFuture.completedFuture(null);
                 }
@@ -201,7 +203,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
 
-            if (!sender.hasPermission("ecotaleincome.admin.reload")) {
+            if (!hasPermWithWildcard(sender, "ecotaleincome.admin.reload")) {
                 context.sendMessage(msg(L(sender, "cmd.no_permission")));
                 return CompletableFuture.completedFuture(null);
             }
@@ -212,6 +214,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             if (success) {
                 String newLang = plugin.getConfigManager().getConfig().getGeneral().getLanguage();
                 plugin.getLangManager().reload(newLang);
+                PermissionHelper.getInstance().reload();
 
                 context.sendMessage(msg(L(sender, "cmd.reload.success")));
                 LOGGER.info("Configuration reloaded by {}", sender.getDisplayName());
@@ -234,7 +237,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
 
-            if (!sender.hasPermission("ecotaleincome.admin.debug")) {
+            if (!hasPermWithWildcard(sender, "ecotaleincome.admin.debug")) {
                 context.sendMessage(msg(L(sender, "cmd.no_permission")));
                 return CompletableFuture.completedFuture(null);
             }
@@ -415,5 +418,23 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
         }
 
         ctx.sendMessage(msg(L(sender, "cmd.stats.footer")));
+    }
+
+    // ── Wildcard permission helper ──────────────────────────────
+
+    private static boolean hasPermWithWildcard(CommandSender sender, String perm) {
+        if (sender.hasPermission(perm)) return true;
+        String[] parts = perm.split("\\.");
+        for (int i = parts.length - 1; i >= 1; i--) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < i; j++) {
+                if (j > 0) sb.append('.');
+                sb.append(parts[j]);
+            }
+            sb.append(".*");
+            if (sender.hasPermission(sb.toString())) return true;
+        }
+        if (sender.hasPermission("*")) return true;
+        return PermissionHelper.getInstance().hasPermission(sender.getUuid(), perm);
     }
 }

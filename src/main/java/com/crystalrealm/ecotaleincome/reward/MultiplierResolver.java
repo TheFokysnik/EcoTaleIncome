@@ -1,6 +1,7 @@
 package com.crystalrealm.ecotaleincome.reward;
 
 import com.crystalrealm.ecotaleincome.config.IncomeConfig;
+import com.crystalrealm.ecotaleincome.util.PermissionHelper;
 
 import com.hypixel.hytale.server.core.entity.entities.Player;
 
@@ -74,7 +75,7 @@ public class MultiplierResolver {
 
             String permission = "ecotaleincome.multiplier." + groupName;
 
-            if (player.hasPermission(permission)) {
+            if (hasPermWithWildcardPlayer(player, permission)) {
                 maxMultiplier = Math.max(maxMultiplier, multiplier);
             }
         }
@@ -101,12 +102,45 @@ public class MultiplierResolver {
 
             String permission = "ecotaleincome.multiplier." + groupName;
 
-            if (permissionChecker.hasPermission(permission)) {
+            if (hasPermWithWildcardChecker(permissionChecker, permission)) {
                 maxMultiplier = Math.max(maxMultiplier, multiplier);
             }
         }
 
         return maxMultiplier;
+    }
+
+    // ── Wildcard permission helpers ─────────────────────────────
+
+    private static boolean hasPermWithWildcardPlayer(Player player, String perm) {
+        if (player.hasPermission(perm)) return true;
+        String[] parts = perm.split("\\.");
+        for (int i = parts.length - 1; i >= 1; i--) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < i; j++) {
+                if (j > 0) sb.append('.');
+                sb.append(parts[j]);
+            }
+            sb.append(".*");
+            if (player.hasPermission(sb.toString())) return true;
+        }
+        if (player.hasPermission("*")) return true;
+        return PermissionHelper.getInstance().hasPermission(player.getUuid(), perm);
+    }
+
+    private static boolean hasPermWithWildcardChecker(PermissionChecker checker, String perm) {
+        if (checker.hasPermission(perm)) return true;
+        String[] parts = perm.split("\\.");
+        for (int i = parts.length - 1; i >= 1; i--) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < i; j++) {
+                if (j > 0) sb.append('.');
+                sb.append(parts[j]);
+            }
+            sb.append(".*");
+            if (checker.hasPermission(sb.toString())) return true;
+        }
+        return checker.hasPermission("*");
     }
 
     /**
