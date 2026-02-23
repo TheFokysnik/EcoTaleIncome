@@ -5,6 +5,7 @@ import com.crystalrealm.ecotaleincome.config.IncomeConfig;
 import com.crystalrealm.ecotaleincome.economy.EconomyBridge;
 import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
+import com.crystalrealm.ecotaleincome.protection.PlacedBlockTracker;
 import com.crystalrealm.ecotaleincome.reward.MultiplierResolver;
 import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
 import com.crystalrealm.ecotaleincome.reward.RewardResult;
@@ -49,19 +50,35 @@ public class WoodcuttingListener {
     private final MultiplierResolver multiplierResolver;
     private final AntiFarmManager antiFarmManager;
     private final CooldownTracker cooldownTracker;
+    private final PlacedBlockTracker placedBlockTracker;
+
+    /**
+     * Block ID keywords that indicate structural/decorative blocks — never rewarded.
+     * Prevents false matches like "oak_log_stairs" being treated as "Oak" wood.
+     */
+    private static final java.util.Set<String> STRUCTURAL_BLOCK_KEYWORDS = java.util.Set.of(
+            "stair", "stairs", "slab", "fence", "wall", "door", "gate",
+            "trapdoor", "button", "pressure_plate", "lever", "sign",
+            "banner", "lantern", "torch", "ladder", "rail", "shelf",
+            "plank", "planks", "beam", "pillar", "column", "frame",
+            "table", "chair", "bench", "carpet", "rug", "pane", "bars",
+            "corner", "step", "half", "tile"
+    );
 
     public WoodcuttingListener(EcoTaleIncomePlugin plugin,
                                RewardCalculator rewardCalculator,
                                EconomyBridge economyBridge,
                                MultiplierResolver multiplierResolver,
                                AntiFarmManager antiFarmManager,
-                               CooldownTracker cooldownTracker) {
+                               CooldownTracker cooldownTracker,
+                               PlacedBlockTracker placedBlockTracker) {
         this.plugin = plugin;
         this.rewardCalculator = rewardCalculator;
         this.economyBridge = economyBridge;
         this.multiplierResolver = multiplierResolver;
         this.antiFarmManager = antiFarmManager;
         this.cooldownTracker = cooldownTracker;
+        this.placedBlockTracker = placedBlockTracker;
     }
 
     // ── Registration ────────────────────────────────────────────
@@ -137,6 +154,15 @@ public class WoodcuttingListener {
                     return;
                 }
 
+                // ── Guard: player-placed block protection ──
+                if (plugin.getConfigManager().getConfig().getProtection().isDenyPlayerPlacedBlocks()
+                        && placedBlockTracker != null
+                        && placedBlockTracker.isPlayerPlaced(blockX, blockY, blockZ)) {
+                    debugLog("Player {} broke player-placed block at {},{},{} — no reward.",
+                            playerUuid, blockX, blockY, blockZ);
+                    return;
+                }
+
                 // ── Anti-farm ──
                 double farmMultiplier = antiFarmManager.getAndUpdateWoodMultiplier(playerUuid, blockId);
                 if (farmMultiplier <= 0.0) return;
@@ -163,9 +189,8 @@ public class WoodcuttingListener {
                 }
 
                 // Apply anti-farm
-                double finalAmount = result.amount() * farmMultiplier;
-                finalAmount = Math.round(finalAmount * 100.0) / 100.0;
-                if (finalAmount < 0.01) return;
+                double finalAmount = rewardCalculator.roundFinal(result.amount() * farmMultiplier);
+                if (finalAmount < rewardCalculator.getMinAmount()) return;
 
                 // ── Deposit ──
                 String reason = String.format("Woodcutting: %s", treeName);
@@ -192,6 +217,11 @@ public class WoodcuttingListener {
      * group and ID pattern matching.
      */
     private boolean isWoodBlock(BlockType blockType, String blockId) {
+        String lower = blockId.toLowerCase();
+
+        // Exclude structural/decorative blocks (stairs, slabs, fences, etc.)
+        if (isStructuralBlock(lower)) return false;
+
         // Check block type group
         String group = blockType.getGroup();
         if (group != null) {
@@ -203,7 +233,6 @@ public class WoodcuttingListener {
         }
 
         // ID pattern matching
-        String lower = blockId.toLowerCase();
         if (lower.contains("_log") || lower.contains("_wood")
                 || lower.startsWith("log_") || lower.startsWith("wood_")
                 || lower.contains("stripped_log") || lower.contains("tree_trunk")) {
@@ -223,9 +252,9 @@ public class WoodcuttingListener {
 
         String lower = blockId.toLowerCase();
 
-        // Direct match
+        // Direct match using word-boundary segments
         for (String configuredTree : trees.keySet()) {
-            if (lower.contains(configuredTree.toLowerCase())) {
+            if (RewardCalculator.matchesAsSegment(lower, configuredTree)) {
                 return configuredTree;
             }
         }
@@ -241,8 +270,8 @@ public class WoodcuttingListener {
                 .replace("tree_", "");
 
         for (String configuredTree : trees.keySet()) {
-            if (stripped.contains(configuredTree.toLowerCase()) ||
-                    configuredTree.toLowerCase().contains(stripped)) {
+            if (RewardCalculator.matchesAsSegment(stripped, configuredTree)
+                    || RewardCalculator.matchesAsSegment(configuredTree, stripped)) {
                 return configuredTree;
             }
         }
@@ -263,6 +292,19 @@ public class WoodcuttingListener {
     }
 
     // ── Custom Blocks ────────────────────────────────────────────
+
+    /**
+     * Checks if a block ID contains keywords indicating a structural/decorative block
+     * (stairs, slabs, fences, etc.) that should never receive resource rewards.
+     */
+    private boolean isStructuralBlock(String lowerBlockId) {
+        for (String keyword : STRUCTURAL_BLOCK_KEYWORDS) {
+            if (RewardCalculator.matchesAsSegment(lowerBlockId, keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Checks if a block ID matches any custom block entry with the given categories.

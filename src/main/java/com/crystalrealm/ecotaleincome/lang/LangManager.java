@@ -48,7 +48,7 @@ public class LangManager {
     private static final Type MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
     /** Поддерживаемые языки */
-    public static final List<String> SUPPORTED_LANGS = List.of("en", "ru");
+    public static final List<String> SUPPORTED_LANGS = List.of("en", "ru", "pt_br", "fr", "de", "es");
     public static final String DEFAULT_LANG = "ru";
 
     /** Загруженные переводы: langCode → (key → message) */

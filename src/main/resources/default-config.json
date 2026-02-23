@@ -2,11 +2,17 @@
   "General": {
     "DebugMode": false,
     "Language": "ru",
+    "_EconomyProviderOptions": "ecotale | economyapi | generic",
     "EconomyProvider": "ecotale",
+    "_LevelProviderOptions": "rpgleveling | endlessleveling | mmoskilltree | generic",
+    "LevelProvider": "rpgleveling",
     "AllowedWorlds": [],
     "MessagePrefix": "<dark_gray>[<gold>$<dark_gray>]",
     "NotifyOnReward": true,
-    "NotifyFormat": "<green>+{amount} <dark_gray>• <gray>{source}"
+    "NotifyFormat": "<green>+{amount} <dark_gray>• <gray>{source}",
+    "NotifyMode": "popup",
+    "AggregateWindowMs": 1500,
+    "RoundToWholeNumbers": false
   },
 
   "MobKills": {
@@ -137,6 +143,13 @@
     "DepositHasReason": false
   },
 
+  "GenericLeveling": {
+    "_comment": "Reflection-адаптер для любого плагина уровней. Установите LevelProvider: generic и заполните поля ниже.",
+    "ClassName": "",
+    "InstanceMethod": "",
+    "GetLevelMethod": "getPlayerLevel"
+  },
+
   "Multipliers": {
     "Groups": {
       "VIP":     1.25,
@@ -148,6 +161,8 @@
   "Protection": {
     "MaxRewardsPerMinute": 60,
     "SameBlockCooldownMs": 500,
+    "DenyPlayerPlacedBlocks": true,
+    "PlacedBlockExpireMinutes": 30,
     "AntiFarm": {
       "Enabled": true,
       "WindowSeconds": 120,

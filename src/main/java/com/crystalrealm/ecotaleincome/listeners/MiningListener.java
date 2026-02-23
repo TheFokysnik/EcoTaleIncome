@@ -5,6 +5,7 @@ import com.crystalrealm.ecotaleincome.config.IncomeConfig;
 import com.crystalrealm.ecotaleincome.economy.EconomyBridge;
 import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
+import com.crystalrealm.ecotaleincome.protection.PlacedBlockTracker;
 import com.crystalrealm.ecotaleincome.reward.MultiplierResolver;
 import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
 import com.crystalrealm.ecotaleincome.reward.RewardResult;
@@ -52,19 +53,34 @@ public class MiningListener {
     private final MultiplierResolver multiplierResolver;
     private final AntiFarmManager antiFarmManager;
     private final CooldownTracker cooldownTracker;
+    private final PlacedBlockTracker placedBlockTracker;
+
+    /**
+     * Block ID keywords that indicate structural/decorative blocks — never rewarded.
+     */
+    private static final java.util.Set<String> STRUCTURAL_BLOCK_KEYWORDS = java.util.Set.of(
+            "stair", "stairs", "slab", "fence", "wall", "door", "gate",
+            "trapdoor", "button", "pressure_plate", "lever", "sign",
+            "banner", "lantern", "torch", "ladder", "rail", "shelf",
+            "plank", "planks", "beam", "pillar", "column", "frame",
+            "table", "chair", "bench", "carpet", "rug", "pane", "bars",
+            "corner", "step", "half", "tile"
+    );
 
     public MiningListener(EcoTaleIncomePlugin plugin,
                           RewardCalculator rewardCalculator,
                           EconomyBridge economyBridge,
                           MultiplierResolver multiplierResolver,
                           AntiFarmManager antiFarmManager,
-                          CooldownTracker cooldownTracker) {
+                          CooldownTracker cooldownTracker,
+                          PlacedBlockTracker placedBlockTracker) {
         this.plugin = plugin;
         this.rewardCalculator = rewardCalculator;
         this.economyBridge = economyBridge;
         this.multiplierResolver = multiplierResolver;
         this.antiFarmManager = antiFarmManager;
         this.cooldownTracker = cooldownTracker;
+        this.placedBlockTracker = placedBlockTracker;
     }
 
     // ── Registration ────────────────────────────────────────────
@@ -114,6 +130,12 @@ public class MiningListener {
                 UUID playerUuid = playerRef.getUuid();
                 MessageUtil.cachePlayerRef(playerUuid, playerRef);
 
+                // Cache ECS context for leveling providers (e.g. MMOSkillTree)
+                if (plugin.getLevelBridge() != null) {
+                    com.hypixel.hytale.component.Ref<EntityStore> ref = chunk.getReferenceTo(index);
+                    if (ref != null) plugin.getLevelBridge().onPlayerJoin(playerUuid, store, ref);
+                }
+
                 // ── Quick check: is this an ore? ──
                 if (!isOreBlock(blockType, blockId)) return;
 
@@ -135,6 +157,15 @@ public class MiningListener {
                 int blockY = pos.getY();
                 int blockZ = pos.getZ();
                 if (!cooldownTracker.canReceiveBlockReward(playerUuid, blockX, blockY, blockZ)) {
+                    return;
+                }
+
+                // ── Guard: player-placed block protection ──
+                if (plugin.getConfigManager().getConfig().getProtection().isDenyPlayerPlacedBlocks()
+                        && placedBlockTracker != null
+                        && placedBlockTracker.isPlayerPlaced(blockX, blockY, blockZ)) {
+                    debugLog("Player {} broke player-placed block at {},{},{} — no reward.",
+                            playerUuid, blockX, blockY, blockZ);
                     return;
                 }
 
@@ -164,9 +195,8 @@ public class MiningListener {
                 }
 
                 // Apply anti-farm
-                double finalAmount = result.amount() * farmMultiplier;
-                finalAmount = Math.round(finalAmount * 100.0) / 100.0;
-                if (finalAmount < 0.01) return;
+                double finalAmount = rewardCalculator.roundFinal(result.amount() * farmMultiplier);
+                if (finalAmount < rewardCalculator.getMinAmount()) return;
 
                 // ── Deposit ──
                 String reason = String.format("Mining: %s (Y=%d)", oreName, blockY);
@@ -195,12 +225,16 @@ public class MiningListener {
      * falls back to ID pattern matching.</p>
      */
     private boolean isOreBlock(BlockType blockType, String blockId) {
+        String lower = blockId.toLowerCase();
+
+        // Exclude structural/decorative blocks (stairs, slabs, etc.)
+        if (isStructuralBlock(lower)) return false;
+
         // Check block type group
         String group = blockType.getGroup();
         if (group != null && group.toLowerCase().contains("ore")) return true;
 
         // Pattern matching on block ID
-        String lower = blockId.toLowerCase();
         if (lower.contains("_ore") || lower.startsWith("ore_")
                 || lower.contains("ore_block") || lower.contains("raw_ore")) {
             return true;
@@ -222,9 +256,9 @@ public class MiningListener {
 
         String lower = blockId.toLowerCase();
 
-        // Direct match against configured ore names
+        // Direct match using word-boundary segments
         for (String configuredOre : ores.keySet()) {
-            if (lower.contains(configuredOre.toLowerCase())) {
+            if (RewardCalculator.matchesAsSegment(lower, configuredOre)) {
                 return configuredOre;
             }
         }
@@ -237,8 +271,8 @@ public class MiningListener {
                 .replace("raw_", "");
 
         for (String configuredOre : ores.keySet()) {
-            if (stripped.contains(configuredOre.toLowerCase()) ||
-                    configuredOre.toLowerCase().contains(stripped)) {
+            if (RewardCalculator.matchesAsSegment(stripped, configuredOre)
+                    || RewardCalculator.matchesAsSegment(configuredOre, stripped)) {
                 return configuredOre;
             }
         }
@@ -260,6 +294,19 @@ public class MiningListener {
     }
 
     // ── Custom Blocks ────────────────────────────────────────────
+
+    /**
+     * Checks if a block ID contains keywords indicating a structural/decorative block
+     * (stairs, slabs, fences, etc.) that should never receive resource rewards.
+     */
+    private boolean isStructuralBlock(String lowerBlockId) {
+        for (String keyword : STRUCTURAL_BLOCK_KEYWORDS) {
+            if (RewardCalculator.matchesAsSegment(lowerBlockId, keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Checks if a block ID matches any custom block entry with the given categories.

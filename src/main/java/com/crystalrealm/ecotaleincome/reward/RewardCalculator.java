@@ -8,6 +8,7 @@ import com.crystalrealm.ecotaleincome.util.PluginLogger;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Центральный калькулятор наград.
@@ -176,6 +177,9 @@ public class RewardCalculator {
 
     /**
      * Case-insensitive поиск ключа в карте наград.
+     *
+     * <p>Использует сегментное сопоставление (по границам _ и -),
+     * чтобы избежать ложных совпадений (например, "corner" ≠ "corn").</p>
      */
     @Nullable
     private RewardRange findInMap(@Nonnull Map<String, RewardRange> map,
@@ -184,16 +188,16 @@ public class RewardCalculator {
         RewardRange range = map.get(key);
         if (range != null) return range;
 
-        // Case-insensitive поиск
+        // Case-insensitive точное совпадение
         for (Map.Entry<String, RewardRange> entry : map.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(key)) {
                 return entry.getValue();
             }
         }
 
-        // Проверка contains (для "Gold_Ore" → "Gold")
+        // Сегментное совпадение (для "Gold_Ore" → "Gold") с учётом границ слов
         for (Map.Entry<String, RewardRange> entry : map.entrySet()) {
-            if (key.toLowerCase().contains(entry.getKey().toLowerCase())) {
+            if (matchesAsSegment(key, entry.getKey())) {
                 return entry.getValue();
             }
         }
@@ -206,11 +210,53 @@ public class RewardCalculator {
     }
 
     /**
-     * Округляет до 2 знаков и гарантирует минимум 0.01 для положительных наград.
+     * Округляет до 2 знаков (или до целых, если включена опция)
+     * и гарантирует минимум 0.01 (или 1.0 для целых) для положительных наград.
      */
     private double round(double value) {
         if (value <= 0) return 0.0;
+        if (config.getGeneral().isRoundToWholeNumbers()) {
+            return Math.max(1.0, Math.round(value));
+        }
         double rounded = Math.round(value * 100.0) / 100.0;
         return Math.max(rounded, 0.01);
+    }
+
+    /**
+     * Публичный метод округления для использования в listener'ах.
+     * Применяет ту же логику округления, что и внутренний round().
+     *
+     * @param value сумма для округления
+     * @return округлённое значение
+     */
+    public double roundFinal(double value) {
+        return round(value);
+    }
+
+    /**
+     * Возвращает минимальную значимую сумму (0.01 или 1.0 при целочисленном режиме).
+     */
+    public double getMinAmount() {
+        return config.getGeneral().isRoundToWholeNumbers() ? 1.0 : 0.01;
+    }
+
+    /**
+     * Проверяет, содержит ли текст указанный сегмент как целое слово,
+     * разделённое символами _, - или границами строки.
+     *
+     * <p>Примеры:</p>
+     * <ul>
+     *   <li>{@code matchesAsSegment("corner_stair", "corn")} → false</li>
+     *   <li>{@code matchesAsSegment("corn_crop", "corn")} → true</li>
+     *   <li>{@code matchesAsSegment("oak_log_stairs", "oak")} → true</li>
+     *   <li>{@code matchesAsSegment("gold_ore_block", "gold")} → true</li>
+     * </ul>
+     */
+    public static boolean matchesAsSegment(String text, String segment) {
+        if (text.equalsIgnoreCase(segment)) return true;
+        String regex = "(^|[_\\-])"
+                + Pattern.quote(segment.toLowerCase())
+                + "($|[_\\-])";
+        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(text).find();
     }
 }

@@ -7,7 +7,7 @@
 Reward players for **mob kills**, **mining**, **woodcutting** & **farming** — with RPG level-scaling, VIP multipliers, and a pluggable economy system.
 
 ![Hytale Server Mod](https://img.shields.io/badge/Hytale-Server%20Mod-0ea5e9?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.1.1-10b981?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.3.0-10b981?style=for-the-badge)
 ![Java](https://img.shields.io/badge/Java-17+-f97316?style=for-the-badge&logo=openjdk&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-a855f7?style=for-the-badge)
 ![Ecotale](https://img.shields.io/badge/Ecotale-1.0.7-6366f1?style=for-the-badge)
@@ -34,7 +34,7 @@ Reward players for **mob kills**, **mining**, **woodcutting** & **farming** — 
 | 🌾 **Farming** | 15 crop types, F-key + LMB harvesting (configurable) |
 | 📈 **RPG Leveling** | Optional integration — higher level difference = bigger multiplier |
 | 👑 **VIP Multipliers** | Permission-based ×1.25 / ×1.50 reward multipliers |
-| 🛡️ **Anti-Farm** | Rate limits, diminishing returns, block cooldowns |
+| 🛡️ **Anti-Farm** | Rate limits, diminishing returns, block cooldowns, placed-block exploit protection |
 | 🔌 **Pluggable Economy** | Built-in Ecotale support + API for any economy plugin |
 | 🔧 **Hot Reload** | `/income reload` — no restart needed |
 | 🌍 **Localization** | RU / EN with per-player language switching |
@@ -54,7 +54,7 @@ Reward players for **mob kills**, **mining**, **woodcutting** & **farming** — 
 ```bash
 # 1. Download the latest release
 # 2. Drop into your server's mods/ folder
-cp EcoTaleIncome-1.1.0.jar /server/mods/
+cp EcoTaleIncome-1.2.5.jar /server/mods/
 
 # 3. Start the server — config is created automatically
 # 4. Edit the config to your liking
@@ -249,12 +249,23 @@ For server owners who use a third-party economy plugin and **don't want to write
 Auto-detected signatures: `(UUID, double)`, `(UUID, double, String)`, `(String, double)`, `(UUID, int)`
 </details>
 
-### Anti-Farm Protection
+### General Settings
+
+| Setting | Default | Description |
+|:--------|:--------|:------------|
+| `RoundToWholeNumbers` | `false` | Round all income to whole numbers (e.g. 6.57 → 7) |
+| `EconomyProvider` | `"ecotale"` | Economy provider key |
+| `NotifyOnReward` | `true` | Show chat messages on income |
+| `DebugMode` | `false` | Enable verbose debug logging |
+
+### Anti-Farm & Exploit Protection
 
 | Setting | Default | Description |
 |:--------|:--------|:------------|
 | `MaxRewardsPerMinute` | 60 | Hard cap on rewards per minute |
 | `SameBlockCooldownMs` | 500 | Cooldown between same-position rewards |
+| `DenyPlayerPlacedBlocks` | `true` | Deny income for blocks placed by players (exploit protection) |
+| `PlacedBlockExpireMinutes` | 30 | How long placed-block positions are remembered |
 | `AntiFarm.WindowSeconds` | 120 | Time window for diminishing returns |
 | `AntiFarm.ThresholdKills` | 25 | Kills before penalty triggers |
 | `AntiFarm.PenaltyMultiplier` | 0.10 | Reward multiplier after threshold |
@@ -284,7 +295,7 @@ EcoTaleIncome provides a public Java API for integrating custom economy plugins.
 
 ```gradle
 dependencies {
-    compileOnly files('libs/EcoTaleIncome-1.1.0.jar')
+    compileOnly files('libs/EcoTaleIncome-1.2.5.jar')
 }
 ```
 
@@ -345,7 +356,7 @@ cd EcoTaleIncome
 ./gradlew jar
 ```
 
-Output: `build/libs/EcoTaleIncome-1.1.0.jar`
+Output: `build/libs/EcoTaleIncome-1.2.5.jar`
 
 > [!NOTE]
 > The project uses compile-only stubs for Hytale Server API, Ecotale, and RPG Leveling (located in `src/stubs/java/`). No external JAR downloads needed.
@@ -379,10 +390,12 @@ EcoTaleIncome/
 │   │   ├── MobKillListener.java              # Kill events (ECS)
 │   │   ├── MiningListener.java               # Ore break events
 │   │   ├── WoodcuttingListener.java          # Tree break events
-│   │   └── FarmingListener.java              # Crop events (Use + Break)
+│   │   ├── FarmingListener.java              # Crop events (Use + Break)
+│   │   └── BlockPlaceListener.java           # Place tracking (exploit guard)
 │   ├── protection/
 │   │   ├── AntiFarmManager.java              # Diminishing returns
-│   │   └── CooldownTracker.java              # Rate limiting
+│   │   ├── CooldownTracker.java              # Rate limiting
+│   │   └── PlacedBlockTracker.java           # Placed-block position memory
 │   ├── commands/
 │   │   └── IncomeCommandCollection.java      # /income commands
 │   ├── lang/
@@ -424,7 +437,18 @@ Contributions are welcome! Feel free to:
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-## �📝 Changelog
+## 📝 Changelog
+
+### v1.2.0 — 2026-02-14
+- **[CRITICAL] Fixed false block name matching** — structural blocks (stairs, slabs, fences, etc.) no longer falsely match resource names (e.g. "corner stair" ≠ "Corn", "oak log stairs" ≠ "Oak").
+- **New: Player-placed block protection** — blocks placed by players are tracked and won't grant income when broken. Prevents the place-and-break money exploit. Configurable via `Protection.DenyPlayerPlacedBlocks` and `Protection.PlacedBlockExpireMinutes`.
+- **New: Whole-number rounding** — `General.RoundToWholeNumbers` option rounds all income to integers.
+- All block name matching now uses word-boundary segmentation instead of substring checks.
+- Centralized rounding logic via `RewardCalculator.roundFinal()` / `getMinAmount()`.
+
+### v1.1.1 — 2026-02-13
+- **Fix:** Startup crash `NoClassDefFoundError: GameMode`. Replaced with string-based API.
+- Added LuckPerms support (optional). Three-tier permission check.
 
 ### v1.1.0 — 2026-02-10
 - **New:** Language subcommands — `/income langen`, `/income langru` (replaces `/income lang <code>`)

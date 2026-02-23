@@ -5,6 +5,7 @@ import com.crystalrealm.ecotaleincome.config.IncomeConfig;
 import com.crystalrealm.ecotaleincome.economy.EconomyBridge;
 import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
+import com.crystalrealm.ecotaleincome.protection.PlacedBlockTracker;
 import com.crystalrealm.ecotaleincome.reward.MultiplierResolver;
 import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
 import com.crystalrealm.ecotaleincome.reward.RewardResult;
@@ -53,19 +54,35 @@ public class FarmingListener {
     private final MultiplierResolver multiplierResolver;
     private final AntiFarmManager antiFarmManager;
     private final CooldownTracker cooldownTracker;
+    private final PlacedBlockTracker placedBlockTracker;
+
+    /**
+     * Block ID keywords that indicate structural/decorative blocks — never rewarded.
+     * Prevents false matches like "corner_stair" being treated as "Corn" crop.
+     */
+    private static final java.util.Set<String> STRUCTURAL_BLOCK_KEYWORDS = java.util.Set.of(
+            "stair", "stairs", "slab", "fence", "wall", "door", "gate",
+            "trapdoor", "button", "pressure_plate", "lever", "sign",
+            "banner", "lantern", "torch", "ladder", "rail", "shelf",
+            "plank", "planks", "beam", "pillar", "column", "frame",
+            "table", "chair", "bench", "carpet", "rug", "pane", "bars",
+            "corner", "step", "half", "tile"
+    );
 
     public FarmingListener(EcoTaleIncomePlugin plugin,
                            RewardCalculator rewardCalculator,
                            EconomyBridge economyBridge,
                            MultiplierResolver multiplierResolver,
                            AntiFarmManager antiFarmManager,
-                           CooldownTracker cooldownTracker) {
+                           CooldownTracker cooldownTracker,
+                           PlacedBlockTracker placedBlockTracker) {
         this.plugin = plugin;
         this.rewardCalculator = rewardCalculator;
         this.economyBridge = economyBridge;
         this.multiplierResolver = multiplierResolver;
         this.antiFarmManager = antiFarmManager;
         this.cooldownTracker = cooldownTracker;
+        this.placedBlockTracker = placedBlockTracker;
     }
 
     // ── Registration ────────────────────────────────────────────
@@ -151,6 +168,15 @@ public class FarmingListener {
                     return;
                 }
 
+                // ── Guard: player-placed block protection ──
+                if (config.getProtection().isDenyPlayerPlacedBlocks()
+                        && placedBlockTracker != null
+                        && placedBlockTracker.isPlayerPlaced(blockX, blockY, blockZ)) {
+                    debugLog("Player {} broke player-placed block at {},{},{} — no reward.",
+                            playerUuid, blockX, blockY, blockZ);
+                    return;
+                }
+
                 // ── Anti-farm ──
                 double farmMultiplier = antiFarmManager.getAndUpdateFarmingMultiplier(playerUuid, blockId);
                 if (farmMultiplier <= 0.0) return;
@@ -177,9 +203,8 @@ public class FarmingListener {
                 }
 
                 // Apply anti-farm
-                double finalAmount = result.amount() * farmMultiplier;
-                finalAmount = Math.round(finalAmount * 100.0) / 100.0;
-                if (finalAmount < 0.01) return;
+                double finalAmount = rewardCalculator.roundFinal(result.amount() * farmMultiplier);
+                if (finalAmount < rewardCalculator.getMinAmount()) return;
 
                 // ── Deposit ──
                 String reason = String.format("Farming: %s", cropName);
@@ -262,6 +287,15 @@ public class FarmingListener {
                     return;
                 }
 
+                // ── Guard: player-placed block protection ──
+                if (config.getProtection().isDenyPlayerPlacedBlocks()
+                        && placedBlockTracker != null
+                        && placedBlockTracker.isPlayerPlaced(blockX, blockY, blockZ)) {
+                    debugLog("Player {} used player-placed block at {},{},{} — no reward.",
+                            playerUuid, blockX, blockY, blockZ);
+                    return;
+                }
+
                 // ── Anti-farm ──
                 double farmMultiplier = antiFarmManager.getAndUpdateFarmingMultiplier(playerUuid, blockId);
                 if (farmMultiplier <= 0.0) return;
@@ -288,9 +322,8 @@ public class FarmingListener {
                 }
 
                 // Apply anti-farm
-                double finalAmount = result.amount() * farmMultiplier;
-                finalAmount = Math.round(finalAmount * 100.0) / 100.0;
-                if (finalAmount < 0.01) return;
+                double finalAmount = rewardCalculator.roundFinal(result.amount() * farmMultiplier);
+                if (finalAmount < rewardCalculator.getMinAmount()) return;
 
                 // ── Deposit ──
                 String reason = String.format("Farming: %s", cropName);
@@ -355,6 +388,9 @@ public class FarmingListener {
     private boolean isCropBlock(BlockType blockType, String blockId) {
         String lower = sanitizeBlockId(blockId);
 
+        // ── Step 0: Exclude structural/decorative blocks (stairs, slabs, etc.) ──
+        if (isStructuralBlock(lower)) return false;
+
         // ── Step 1 (highest priority): Hytale crop/fruit patterns ──
         // *Plant_Crop_Pumpkin_Block_Eternal_State_Definitions_StageFinal
         // Plant_Crop_Carrot_Item, Plant_Fruit_Apple_Item, etc.
@@ -376,7 +412,7 @@ public class FarmingListener {
         IncomeConfig config = plugin.getConfigManager().getConfig();
         Map<String, IncomeConfig.RewardRange> crops = config.getFarming().getCrops();
         for (String cropKey : crops.keySet()) {
-            if (lower.contains(cropKey.toLowerCase())) {
+            if (RewardCalculator.matchesAsSegment(lower, cropKey)) {
                 return true;
             }
         }
@@ -457,10 +493,10 @@ public class FarmingListener {
                     return configuredCrop;
                 }
             }
-            // No exact match — try partial
+            // No exact match — try segment match
             for (String configuredCrop : crops.keySet()) {
-                if (extracted.contains(configuredCrop.toLowerCase())
-                        || configuredCrop.toLowerCase().contains(extracted)) {
+                if (RewardCalculator.matchesAsSegment(extracted, configuredCrop)
+                        || RewardCalculator.matchesAsSegment(configuredCrop, extracted)) {
                     return configuredCrop;
                 }
             }
@@ -468,9 +504,9 @@ public class FarmingListener {
             return extracted.substring(0, 1).toUpperCase() + extracted.substring(1);
         }
 
-        // ── Generic: direct match against config keys ──
+        // ── Generic: direct match against config keys (word-boundary) ──
         for (String configuredCrop : crops.keySet()) {
-            if (lower.contains(configuredCrop.toLowerCase())) {
+            if (RewardCalculator.matchesAsSegment(lower, configuredCrop)) {
                 return configuredCrop;
             }
         }
@@ -488,8 +524,8 @@ public class FarmingListener {
                 .replaceAll("_\\d+$", "");
 
         for (String configuredCrop : crops.keySet()) {
-            if (stripped.contains(configuredCrop.toLowerCase()) ||
-                    configuredCrop.toLowerCase().contains(stripped)) {
+            if (RewardCalculator.matchesAsSegment(stripped, configuredCrop)
+                    || RewardCalculator.matchesAsSegment(configuredCrop, stripped)) {
                 return configuredCrop;
             }
         }
@@ -536,6 +572,19 @@ public class FarmingListener {
     }
 
     // ── Custom Blocks ────────────────────────────────────────────
+
+    /**
+     * Checks if a block ID contains keywords indicating a structural/decorative block
+     * (stairs, slabs, fences, etc.) that should never receive resource rewards.
+     */
+    private boolean isStructuralBlock(String lowerBlockId) {
+        for (String keyword : STRUCTURAL_BLOCK_KEYWORDS) {
+            if (RewardCalculator.matchesAsSegment(lowerBlockId, keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Checks if a block ID matches any custom block entry with the given categories.

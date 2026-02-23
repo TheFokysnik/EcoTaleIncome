@@ -3,23 +3,23 @@ package com.crystalrealm.ecotaleincome.listeners;
 import com.crystalrealm.ecotaleincome.EcoTaleIncomePlugin;
 import com.crystalrealm.ecotaleincome.config.IncomeConfig;
 import com.crystalrealm.ecotaleincome.economy.EconomyBridge;
+import com.crystalrealm.ecotaleincome.leveling.LevelBridge;
 import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
 import com.crystalrealm.ecotaleincome.reward.MultiplierResolver;
 import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
 import com.crystalrealm.ecotaleincome.reward.RewardResult;
-import com.crystalrealm.ecotaleincome.rpg.RPGLevelingBridge;
 import com.crystalrealm.ecotaleincome.util.MessageUtil;
 
+import com.hypixel.hytale.component.ComponentRegistryProxy;
 import com.hypixel.hytale.event.EventRegistry;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import com.crystalrealm.ecotaleincome.util.PluginLogger;
 
-import org.zuxaw.plugin.api.RPGLevelingAPI;
-import org.zuxaw.plugin.api.EntityKillContext;
-import org.zuxaw.plugin.api.XPSource;
-
 import javax.annotation.Nullable;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,11 +29,10 @@ import java.util.UUID;
  * <p>Two strategies are used:
  * <ol>
  *   <li><b>RPG Leveling integration</b> — if available, hooks into
- *       {@link RPGLevelingAPI#registerExperienceGainedListener} for
- *       {@link XPSource#ENTITY_KILL} events, providing entity level
- *       data for level-difference scaling.</li>
+ *       the XP listener via reflection + Proxy for entity-kill events,
+ *       providing entity level data for level-difference scaling.</li>
  *   <li><b>Native fallback</b> — there is no native EntityDeathEvent
- *       on the Hytale server. If RPG Leveling is absent, mob kill
+ *       on the Hytale server. If no level provider is absent, mob kill
  *       rewards are unavailable and a warning is logged.</li>
  * </ol>
  */
@@ -49,6 +48,8 @@ public class MobKillListener {
     private final CooldownTracker cooldownTracker;
 
     private boolean registeredViaRPG = false;
+    private boolean registeredViaNative = false;
+    private boolean entityNameMethodsLogged = false;
 
     public MobKillListener(EcoTaleIncomePlugin plugin,
                            RewardCalculator rewardCalculator,
@@ -70,10 +71,12 @@ public class MobKillListener {
      * Registers the mob-kill listener using the best available strategy.
      *
      * @param eventRegistry    Hytale event registry (kept for API compatibility)
-     * @param rpgBridge        RPG Leveling bridge (may be unavailable)
+     * @param levelBridge      Level bridge (may have RPG Leveling available)
+     * @param entityStoreRegistry  ECS registry for native death system (nullable for API compat)
      */
     public void register(EventRegistry eventRegistry,
-                         @Nullable RPGLevelingBridge rpgBridge) {
+                         @Nullable LevelBridge levelBridge,
+                         @Nullable ComponentRegistryProxy<EntityStore> entityStoreRegistry) {
 
         IncomeConfig config = plugin.getConfigManager().getConfig();
         if (!config.getMobKills().isEnabled()) {
@@ -81,64 +84,166 @@ public class MobKillListener {
             return;
         }
 
-        // Strategy 1: RPG Leveling integration (preferred)
-        if (rpgBridge != null && rpgBridge.isAvailable() && config.getMobKills().isUseRPGLeveling()) {
-            registerViaRPGLeveling(rpgBridge);
+        // Strategy 1: RPG Leveling integration via reflection (preferred — provides entity level data)
+        if (levelBridge != null && levelBridge.isAvailable() && config.getMobKills().isUseRPGLeveling()) {
+            Object rawApi = levelBridge.getRawRpgApi();
+            if (rawApi != null) {
+                registerViaReflection(rawApi);
+                return;
+            }
+        }
+
+        // Strategy 2: Native ECS DeathSystem (works with any level plugin or none)
+        if (entityStoreRegistry != null) {
+            registerViaNativeDeathSystem(entityStoreRegistry);
             return;
         }
 
-        // Strategy 2: Native fallback — not available on Hytale server
+        // Strategy 3: No method available
         registerNativeFallback(eventRegistry);
     }
 
-    /**
-     * Hooks into RPG Leveling's ExperienceGainedListener for
-     * entity-kill events, giving us access to entity levels.
-     */
-    private void registerViaRPGLeveling(RPGLevelingBridge rpgBridge) {
-        RPGLevelingAPI api = rpgBridge.getApi();
-        if (api == null) {
-            LOGGER.warn("RPGLevelingAPI instance is null — native mob kill events are not available.");
-            LOGGER.warn("Install RPG Leveling to enable mob kill income.");
-            return;
-        }
-
-        api.registerExperienceGainedListener(event -> {
-            if (!event.getSource().equals(XPSource.ENTITY_KILL)) return;
-            EntityKillContext killCtx = event.getEntityKillContext();
-            if (killCtx == null) return;
-
-            com.hypixel.hytale.server.core.universe.PlayerRef playerRef = event.getPlayer();
-            UUID playerUuid = playerRef.getUuid();
-            MessageUtil.cachePlayerRef(playerUuid, playerRef);
-            handleRPGMobKill(playerUuid, killCtx);
-        });
-
-        registeredViaRPG = true;
-        LOGGER.info("MobKill listener registered via RPG Leveling API (level-scaling enabled).");
+    /** @deprecated Use {@link #register(EventRegistry, LevelBridge, ComponentRegistryProxy)} */
+    @Deprecated
+    public void register(EventRegistry eventRegistry,
+                         @Nullable LevelBridge levelBridge) {
+        register(eventRegistry, levelBridge, null);
     }
 
     /**
-     * Native fallback: Hytale server does not expose an EntityDeathEvent
-     * via EventBus. Death is handled via ECS DeathComponent changes which
-     * are too complex for a simple listener. Mob kill rewards require RPG Leveling.
+     * Hooks into RPG Leveling's ExperienceGainedListener via reflection + Proxy,
+     * so we don't need a compile-time dependency on org.zuxaw.plugin.api.
+     */
+    private void registerViaReflection(Object rawApi) {
+        try {
+            // Find registerExperienceGainedListener method
+            Method registerMethod = null;
+            Class<?> listenerInterface = null;
+            for (Method m : rawApi.getClass().getMethods()) {
+                if (m.getName().equals("registerExperienceGainedListener") && m.getParameterCount() == 1) {
+                    registerMethod = m;
+                    listenerInterface = m.getParameterTypes()[0];
+                    break;
+                }
+            }
+
+            if (registerMethod == null || listenerInterface == null) {
+                LOGGER.warn("Could not find registerExperienceGainedListener — mob kill rewards disabled.");
+                return;
+            }
+
+            // Create Proxy for the listener interface
+            final Class<?> iface = listenerInterface;
+            Object proxy = Proxy.newProxyInstance(
+                    iface.getClassLoader(),
+                    new Class<?>[]{iface},
+                    (proxyObj, method, args) -> {
+                        if (method.getName().startsWith("on") && args != null && args.length == 1) {
+                            handleXPEvent(args[0]);
+                        }
+                        return null;
+                    }
+            );
+
+            registerMethod.invoke(rawApi, proxy);
+            registeredViaRPG = true;
+            LOGGER.info("MobKill listener registered via RPG Leveling API (reflection, level-scaling enabled).");
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to register RPG Leveling listener via reflection: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Handles an XP event received via the Proxy listener.
+     * Extracts source, player, and EntityKillContext via reflection.
+     */
+    private void handleXPEvent(Object event) {
+        try {
+            // Check source == ENTITY_KILL
+            Method getSource = event.getClass().getMethod("getSource");
+            Object source = getSource.invoke(event);
+            if (source == null) return;
+            String sourceName = source.toString();
+            // Check if source is ENTITY_KILL (handle both enum and XPSource class)
+            if (!sourceName.contains("ENTITY_KILL")) {
+                try {
+                    Method nameMethod = source.getClass().getMethod("name");
+                    String name = (String) nameMethod.invoke(source);
+                    if (!"ENTITY_KILL".equals(name)) return;
+                } catch (NoSuchMethodException ex) {
+                    // Try getName() or just rely on toString check
+                    if (!sourceName.equals("ENTITY_KILL")) return;
+                }
+            }
+
+            // Get EntityKillContext
+            Method getCtx = event.getClass().getMethod("getEntityKillContext");
+            Object killCtx = getCtx.invoke(event);
+            if (killCtx == null) return;
+
+            // Get PlayerRef
+            Method getPlayer = event.getClass().getMethod("getPlayer");
+            Object playerRef = getPlayer.invoke(event);
+            if (playerRef == null) return;
+
+            Method getUuid = playerRef.getClass().getMethod("getUuid");
+            UUID playerUuid = (UUID) getUuid.invoke(playerRef);
+
+            MessageUtil.cachePlayerRef(playerUuid, playerRef);
+            handleRPGMobKill(playerUuid, killCtx);
+
+        } catch (Exception e) {
+            LOGGER.debug("Error handling XP event: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Registers a native ECS {@link MobDeathSystem} that detects NPC deaths
+     * via the DeathComponent. Works with any level provider (or none).
+     */
+    private void registerViaNativeDeathSystem(ComponentRegistryProxy<EntityStore> registry) {
+        MobDeathSystem deathSystem = new MobDeathSystem((playerUuid, npcTypeId) -> {
+            handleNativeMobKill(playerUuid, npcTypeId);
+        });
+        registry.registerSystem(deathSystem);
+        registeredViaNative = true;
+        LOGGER.info("MobKill listener registered via native ECS DeathSystem (level-scaling uses LevelBridge).");
+    }
+
+    /**
+     * Last resort fallback when neither RPG Leveling nor ECS registry are available.
      */
     private void registerNativeFallback(EventRegistry eventRegistry) {
-        LOGGER.warn("Native mob kill events are not available. Mob kill rewards require RPG Leveling plugin.");
-        LOGGER.warn("Install RPG Leveling to enable mob kill income.");
+        LOGGER.warn("No mob kill detection method available. Mob kill rewards disabled.");
+        LOGGER.warn("Install RPG Leveling or ensure ECS registry is passed to enable mob kill income.");
     }
 
     // ── RPG Leveling handler ────────────────────────────────────
 
-    private void handleRPGMobKill(UUID playerUuid, EntityKillContext killCtx) {
+    private void handleRPGMobKill(UUID playerUuid, Object killCtx) {
         try {
             IncomeConfig config = plugin.getConfigManager().getConfig();
 
-            // Retrieve mob info from kill context
-            UUID entityUuid = killCtx.getEntityUuid();
-            int entityLevel = killCtx.hasEntityLevel() ? killCtx.getEntityLevel() : 0;
+            // Retrieve mob info from kill context via reflection
+            UUID entityUuid = null;
+            int entityLevel = 0;
+            try {
+                Method getEntityUuid = killCtx.getClass().getMethod("getEntityUuid");
+                entityUuid = (UUID) getEntityUuid.invoke(killCtx);
+            } catch (Exception ignored) {}
 
-            // Try to get entity name via reflection (real API may have more methods)
+            try {
+                Method hasLvl = killCtx.getClass().getMethod("hasEntityLevel");
+                Object has = hasLvl.invoke(killCtx);
+                if (has instanceof Boolean b && b) {
+                    Method getLvl = killCtx.getClass().getMethod("getEntityLevel");
+                    Object lvl = getLvl.invoke(killCtx);
+                    if (lvl instanceof Number n) entityLevel = n.intValue();
+                }
+            } catch (Exception ignored) {}
+
+            // Try to get entity name via reflection
             String entityType = resolveEntityName(killCtx, entityUuid);
 
             // ── Guard: cooldown / rate limit ──
@@ -154,9 +259,8 @@ public class MobKillListener {
                 return;
             }
 
-            // ── Resolve player level (for level-diff scaling) ──
-            RPGLevelingBridge rpgBridge = plugin.getRPGBridge();
-            int playerLevel = (rpgBridge != null) ? rpgBridge.getPlayerLevel(playerUuid) : 1;
+            // ── Resolve player level (via LevelBridge) ──
+            int playerLevel = plugin.getLevelBridge().getPlayerLevel(playerUuid);
 
             // ── Resolve VIP multiplier ──
             double vipMultiplier = multiplierResolver.resolve(playerUuid);
@@ -192,6 +296,70 @@ public class MobKillListener {
 
         } catch (Throwable e) {
             LOGGER.error("Error processing RPG mob kill reward for player " + playerUuid, e);
+        }
+    }
+
+    // ── Native ECS handler ────────────────────────────────────
+
+    /**
+     * Handles a mob kill detected via the native ECS DeathSystem.
+     * No entity level is available (only RPG Leveling provides that),
+     * so level scaling uses player level only with tier-based heuristics.
+     */
+    private void handleNativeMobKill(UUID playerUuid, String entityType) {
+        try {
+            IncomeConfig config = plugin.getConfigManager().getConfig();
+
+            // ── Guard: cooldown / rate limit ──
+            if (!cooldownTracker.canReceiveMobReward(playerUuid)) {
+                debugLog("Player {} hit mob-kill rate limit.", playerUuid);
+                return;
+            }
+
+            // ── Guard: anti-farm ──
+            double farmMultiplier = antiFarmManager.getAndUpdateMobMultiplier(playerUuid, entityType);
+            if (farmMultiplier <= 0.0) {
+                debugLog("Anti-farm blocked reward for {} killing {}.", playerUuid, entityType);
+                return;
+            }
+
+            // ── Resolve player level (via LevelBridge — works with any provider) ──
+            int playerLevel = plugin.getLevelBridge().getPlayerLevel(playerUuid);
+
+            // ── Resolve VIP multiplier ──
+            double vipMultiplier = multiplierResolver.resolve(playerUuid);
+
+            // ── Determine mob tier (no entity level available in native mode) ──
+            String tier = resolveMobTier(entityType, 0, config);
+
+            // ── Calculate reward ──
+            RewardResult result = rewardCalculator.calculateMobKill(
+                    entityType, tier, playerLevel, 0, vipMultiplier
+            );
+
+            if (result == null || !result.isValid()) {
+                debugLog("No valid reward for tier={} entity={}.", tier, entityType);
+                return;
+            }
+
+            // Apply anti-farm diminishing returns
+            double finalAmount = result.amount() * farmMultiplier;
+            finalAmount = Math.round(finalAmount * 100.0) / 100.0;
+            if (finalAmount < 0.01) return;
+
+            // ── Deposit ──
+            String reason = String.format("MobKill: %s (native)", entityType);
+            boolean deposited = economyBridge.deposit(playerUuid, finalAmount, reason);
+
+            if (deposited) {
+                cooldownTracker.recordMobKill(playerUuid);
+                notifyPlayer(playerUuid, finalAmount, entityType, "mob");
+                debugLog("Rewarded {} → {} coins for killing {} (tier={}, native, farmMult={}).",
+                        playerUuid, finalAmount, entityType, tier, farmMultiplier);
+            }
+
+        } catch (Throwable e) {
+            LOGGER.error("Error processing native mob kill reward for player " + playerUuid, e);
         }
     }
 
@@ -269,44 +437,83 @@ public class MobKillListener {
         return registeredViaRPG;
     }
 
+    public boolean isRegisteredViaNative() {
+        return registeredViaNative;
+    }
+
     /**
-     * Пытается получить имя сущности из EntityKillContext через reflection.
-     * Реальный RPGLeveling API может иметь методы getEntityName(), getEntityType(),
-     * getPrefabName() и т.д., которых нет в стабах.
+     * Пытается получить имя сущности из kill context through reflection.
+     * The real RPGLeveling API may have methods like getEntityName(), getEntityType(),
+     * getPrefabName() etc. that are not in stubs.
      */
-    private String resolveEntityName(EntityKillContext killCtx, UUID entityUuid) {
-        // Попытка 1: getEntityName()
-        try {
-            java.lang.reflect.Method m = killCtx.getClass().getMethod("getEntityName");
-            Object result = m.invoke(killCtx);
-            if (result instanceof String s && !s.isEmpty()) return s;
-        } catch (Exception ignored) {}
+    private String resolveEntityName(Object killCtx, UUID entityUuid) {
+        // Retrieve all public methods for diagnostics
+        java.lang.reflect.Method[] methods = killCtx.getClass().getMethods();
 
-        // Попытка 2: getEntityType()
-        try {
-            java.lang.reflect.Method m = killCtx.getClass().getMethod("getEntityType");
-            Object result = m.invoke(killCtx);
-            if (result instanceof String s && !s.isEmpty()) return s;
-            if (result != null) return result.toString();
-        } catch (Exception ignored) {}
+        // Log available methods ONCE so we can discover the real API
+        if (!entityNameMethodsLogged) {
+            entityNameMethodsLogged = true;
+            StringBuilder sb = new StringBuilder("EntityKillContext methods:");
+            for (java.lang.reflect.Method m : methods) {
+                if (m.getDeclaringClass() == Object.class) continue;
+                sb.append("\n  ").append(m.getReturnType().getSimpleName())
+                  .append(" ").append(m.getName()).append("(");
+                Class<?>[] params = m.getParameterTypes();
+                for (int i = 0; i < params.length; i++) {
+                    if (i > 0) sb.append(", ");
+                    sb.append(params[i].getSimpleName());
+                }
+                sb.append(")");
+            }
+            LOGGER.info(sb.toString());
+        }
 
-        // Попытка 3: getPrefabName()
-        try {
-            java.lang.reflect.Method m = killCtx.getClass().getMethod("getPrefabName");
-            Object result = m.invoke(killCtx);
-            if (result instanceof String s && !s.isEmpty()) return s;
-        } catch (Exception ignored) {}
+        // Try known method names via reflection (real class may have any of these)
+        String[] methodNames = {
+            "getEntityName", "getEntityType", "getPrefabName",
+            "getEntityId", "getNpcTypeId", "getRole", "getNpcId",
+            "getEntityTypeName", "getMobName", "getMobType"
+        };
+        for (String name : methodNames) {
+            try {
+                java.lang.reflect.Method m = killCtx.getClass().getMethod(name);
+                Object result = m.invoke(killCtx);
+                if (result instanceof String s && !s.isEmpty()) {
+                    LOGGER.info("Entity name resolved via {}(): '{}'", name, s);
+                    return s;
+                }
+                if (result != null) {
+                    String str = result.toString();
+                    if (!str.isEmpty() && !str.contains("@")) {
+                        LOGGER.info("Entity name resolved via {}(): '{}'", name, str);
+                        return str;
+                    }
+                }
+            } catch (NoSuchMethodException ignored) {
+            } catch (Exception e) {
+                LOGGER.debug("resolveEntityName: {}() threw: {}", name, e.getMessage());
+            }
+        }
 
-        // Попытка 4: getEntityId()
-        try {
-            java.lang.reflect.Method m = killCtx.getClass().getMethod("getEntityId");
-            Object result = m.invoke(killCtx);
-            if (result instanceof String s && !s.isEmpty()) return s;
-        } catch (Exception ignored) {}
+        // Try all zero-arg methods that return String
+        for (java.lang.reflect.Method m : methods) {
+            if (m.getParameterCount() != 0) continue;
+            if (m.getReturnType() != String.class) continue;
+            if (m.getDeclaringClass() == Object.class) continue;
+            String mName = m.getName();
+            // Skip known UUID/level methods
+            if (mName.equals("toString") || mName.equals("getClass")) continue;
+            try {
+                Object result = m.invoke(killCtx);
+                if (result instanceof String s && !s.isEmpty()) {
+                    LOGGER.info("Entity name resolved via {}(): '{}'", mName, s);
+                    return s;
+                }
+            } catch (Exception ignored) {}
+        }
 
-        // Fallback: "Mob" — лучше чем UUID фрагмент
-        debugLog("Could not resolve entity name from EntityKillContext, methods: {}",
-                java.util.Arrays.toString(killCtx.getClass().getMethods()));
+        // Fallback: "Mob"
+        LOGGER.info("Could not resolve entity name from EntityKillContext for entity {}", entityUuid);
         return "Mob";
     }
 }

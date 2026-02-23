@@ -52,8 +52,28 @@ public class MultiplierResolver {
      * @return наибольший множитель, или 1.0 если нет подходящих групп
      */
     public double resolve(@Nonnull UUID playerUuid) {
-        // UUID-only overload — no Player available, skip permission checks
-        return 1.0;
+        Map<String, Double> groups = multipliersConfig.getGroups();
+        if (groups == null || groups.isEmpty()) return 1.0;
+
+        double maxMultiplier = 1.0;
+
+        for (Map.Entry<String, Double> entry : groups.entrySet()) {
+            String groupName = entry.getKey().toLowerCase();
+            double multiplier = entry.getValue();
+
+            String permission = "ecotaleincome.multiplier." + groupName;
+
+            if (PermissionHelper.getInstance().hasPermission(playerUuid, permission)) {
+                maxMultiplier = Math.max(maxMultiplier, multiplier);
+            }
+        }
+
+        if (maxMultiplier > 1.0) {
+            LOGGER.debug("Resolved VIP multiplier {} for player {} via PermissionHelper",
+                    maxMultiplier, playerUuid);
+        }
+
+        return maxMultiplier;
     }
 
     /**

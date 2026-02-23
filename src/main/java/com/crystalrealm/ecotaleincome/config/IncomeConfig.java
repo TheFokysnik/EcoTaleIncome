@@ -19,6 +19,7 @@ public class IncomeConfig {
     private MultipliersSection Multipliers = new MultipliersSection();
     private ProtectionSection Protection = new ProtectionSection();
     private GenericEconomySection GenericEconomy = new GenericEconomySection();
+    private GenericLevelingSection GenericLeveling;
 
     // ─── Getters ──────────────────────────────────────────────────
 
@@ -31,6 +32,9 @@ public class IncomeConfig {
     public MultipliersSection getMultipliers() { return Multipliers; }
     public ProtectionSection getProtection() { return Protection; }
     public GenericEconomySection getGenericEconomy() { return GenericEconomy; }
+    public GenericLevelingSection getGenericLeveling() {
+        return GenericLeveling != null ? GenericLeveling : new GenericLevelingSection();
+    }
 
     // ─── Вложенные классы секций ──────────────────────────────────
 
@@ -39,20 +43,28 @@ public class IncomeConfig {
         private boolean DebugMode = false;
         private String Language = "ru";
         private String EconomyProvider = "ecotale";
+        private String LevelProvider = "rpgleveling";
         private List<String> AllowedWorlds = List.of();
         private String MessagePrefix = "<dark_gray>[<gold>$<dark_gray>]";
         private boolean NotifyOnReward = true;
         private String NotifyFormat = "<green>+{amount} <dark_gray>• <gray>{source}";
+        private String NotifyMode = "popup";
+        private long AggregateWindowMs = 1500;
+        private boolean RoundToWholeNumbers = false;
 
         public boolean isDebugMode() { return DebugMode; }
         public void setDebugMode(boolean debug) { this.DebugMode = debug; }
         public String getLanguage() { return Language; }
         public void setLanguage(String lang) { this.Language = lang; }
         public String getEconomyProvider() { return EconomyProvider; }
+        public String getLevelProvider() { return LevelProvider != null ? LevelProvider : "rpgleveling"; }
         public List<String> getAllowedWorlds() { return AllowedWorlds; }
         public String getMessagePrefix() { return MessagePrefix; }
         public boolean isNotifyOnReward() { return NotifyOnReward; }
         public String getNotifyFormat() { return NotifyFormat; }
+        public String getNotifyMode() { return NotifyMode != null ? NotifyMode : "popup"; }
+        public long getAggregateWindowMs() { return AggregateWindowMs > 0 ? AggregateWindowMs : 1500; }
+        public boolean isRoundToWholeNumbers() { return RoundToWholeNumbers; }
     }
 
     /** Раздел наград за убийство мобов. */
@@ -253,6 +265,21 @@ public class IncomeConfig {
         }
     }
 
+    /** Config section for a generic leveling plugin adapter. */
+    public static class GenericLevelingSection {
+        private String ClassName = "";
+        private String InstanceMethod = "";
+        private String GetLevelMethod = "getPlayerLevel";
+
+        public String getClassName() { return ClassName; }
+        public String getInstanceMethod() { return InstanceMethod; }
+        public String GetLevelMethod() { return GetLevelMethod; }
+
+        public boolean isConfigured() {
+            return ClassName != null && !ClassName.isBlank();
+        }
+    }
+
     /** VIP/группа множители. */
     public static class MultipliersSection {
         private Map<String, Double> Groups = new HashMap<>();
@@ -264,10 +291,14 @@ public class IncomeConfig {
     public static class ProtectionSection {
         private int MaxRewardsPerMinute = 60;
         private long SameBlockCooldownMs = 500;
+        private boolean DenyPlayerPlacedBlocks = true;
+        private int PlacedBlockExpireMinutes = 30;
         private AntiFarmSection AntiFarm = new AntiFarmSection();
 
         public int getMaxRewardsPerMinute() { return MaxRewardsPerMinute; }
         public long getSameBlockCooldownMs() { return SameBlockCooldownMs; }
+        public boolean isDenyPlayerPlacedBlocks() { return DenyPlayerPlacedBlocks; }
+        public int getPlacedBlockExpireMinutes() { return PlacedBlockExpireMinutes; }
         public AntiFarmSection getAntiFarm() { return AntiFarm; }
     }
 

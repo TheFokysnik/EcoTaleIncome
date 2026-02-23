@@ -5,25 +5,29 @@ import com.crystalrealm.ecotaleincome.config.ConfigManager;
 import com.crystalrealm.ecotaleincome.config.IncomeConfig;
 import com.crystalrealm.ecotaleincome.economy.EconomyBridge;
 import com.crystalrealm.ecotaleincome.economy.GenericEconomyProvider;
+import com.crystalrealm.ecotaleincome.listeners.BlockPlaceListener;
 import com.crystalrealm.ecotaleincome.listeners.FarmingListener;
 import com.crystalrealm.ecotaleincome.listeners.MiningListener;
 import com.crystalrealm.ecotaleincome.listeners.MobKillListener;
 import com.crystalrealm.ecotaleincome.listeners.WoodcuttingListener;
 import com.crystalrealm.ecotaleincome.protection.AntiFarmManager;
 import com.crystalrealm.ecotaleincome.protection.CooldownTracker;
+import com.crystalrealm.ecotaleincome.protection.PlacedBlockTracker;
 import com.crystalrealm.ecotaleincome.reward.MultiplierResolver;
 import com.crystalrealm.ecotaleincome.reward.RewardCalculator;
-import com.crystalrealm.ecotaleincome.rpg.RPGLevelingBridge;
+import com.crystalrealm.ecotaleincome.leveling.GenericLevelProvider;
+import com.crystalrealm.ecotaleincome.leveling.LevelBridge;
+import com.crystalrealm.ecotaleincome.leveling.MMOSkillTreeProvider;
 import com.crystalrealm.ecotaleincome.lang.LangManager;
 
 import com.crystalrealm.ecotaleincome.util.PermissionHelper;
 import com.crystalrealm.ecotaleincome.util.PluginLogger;
+import com.crystalrealm.ecotaleincome.util.RewardAggregator;
 import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +47,7 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * @author CrystalRealm
- * @version 1.1.1
+ * @version 1.3.0
  */
 public class EcoTaleIncomePlugin extends JavaPlugin {
 
@@ -54,19 +58,20 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
     private ConfigManager configManager;
     private LangManager langManager;
     private EconomyBridge economyBridge;
-    private RPGLevelingBridge rpgBridge;
+    private LevelBridge levelBridge;
     private RewardCalculator rewardCalculator;
     private MultiplierResolver multiplierResolver;
     private AntiFarmManager antiFarmManager;
     private CooldownTracker cooldownTracker;
+    private PlacedBlockTracker placedBlockTracker;
     private ScheduledFuture<?> cleanupTask;
+    private RewardAggregator rewardAggregator;
 
     // ── Listeners ───────────────────────────────────────────────
     private MobKillListener mobKillListener;
     private MiningListener miningListener;
     private WoodcuttingListener woodcuttingListener;
-    private FarmingListener farmingListener;
-
+    private FarmingListener farmingListener;    private BlockPlaceListener blockPlaceListener;
     /**
      * Обязательный конструктор для Hytale plugins.
      *
@@ -108,6 +113,7 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
         // 2. Инициализация защиты
         antiFarmManager = new AntiFarmManager(config.getProtection().getAntiFarm());
         cooldownTracker = new CooldownTracker(config.getProtection());
+        placedBlockTracker = new PlacedBlockTracker();
 
         // 3. Множители (VIP/Premium через права)
         multiplierResolver = new MultiplierResolver(config.getMultipliers());
@@ -152,18 +158,32 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
         }
         LOGGER.info("Economy connected via provider: {}", economyBridge.getProviderName());
 
-        // 2. Подключение к RPG Leveling (опционально)
-        rpgBridge = new RPGLevelingBridge();
-        if (rpgBridge.isAvailable()) {
-            LOGGER.info("RPG Leveling detected (v{}). Level-based scaling enabled.",
-                    rpgBridge.getVersion());
+        // 2. Подключение к системе уровней (опционально)
+        levelBridge = new LevelBridge();
+        levelBridge.registerProvider("mmoskilltree", new MMOSkillTreeProvider());
+        var levelCfg = configManager.getConfig().getGenericLeveling();
+        if (levelCfg.isConfigured()) {
+            LOGGER.info("GenericLeveling configured — registering adapter for '{}'", levelCfg.getClassName());
+            levelBridge.registerProvider("generic", new GenericLevelProvider(
+                    levelCfg.getClassName(), levelCfg.getInstanceMethod(), levelCfg.GetLevelMethod()));
+        }
+        levelBridge.activate(configManager.getConfig().getGeneral().getLevelProvider());
+        if (levelBridge.isAvailable()) {
+            LOGGER.info("Level provider connected: {}", levelBridge.getProviderName());
         } else {
-            LOGGER.info("RPG Leveling not found. Mob rewards will use tier-only mode.");
-            rpgBridge = null; // Явно null если недоступен
+            LOGGER.info("No level provider available. Mob rewards will use tier-only mode.");
         }
 
         // 3. Создание и регистрация слушателей
         registerListeners();
+
+        // 3b. Кеширование Player-объектов для уведомлений
+        registerPlayerTracking();
+
+        // 3c. Reward aggregator for "popup" notification mode
+        rewardAggregator = new RewardAggregator(this);
+        LOGGER.info("RewardAggregator initialized (window={}ms)",
+                configManager.getConfig().getGeneral().getAggregateWindowMs());
 
         // 4. Периодическая очистка кешей (каждые 5 минут)
         cleanupTask = HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(
@@ -180,10 +200,14 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
     protected void shutdown() {
         LOGGER.info("EcoTaleIncome shutting down...");
 
+        if (rewardAggregator != null) rewardAggregator.shutdown();
         if (cleanupTask != null) cleanupTask.cancel(false);
         if (antiFarmManager != null) antiFarmManager.clearAll();
         if (cooldownTracker != null) cooldownTracker.clearAll();
+        if (placedBlockTracker != null) placedBlockTracker.clearAll();
         if (langManager != null) langManager.clearPlayerData();
+
+        com.crystalrealm.ecotaleincome.util.MessageUtil.clearCache();
 
         instance = null;
         LOGGER.info("EcoTaleIncome shutdown complete.");
@@ -198,33 +222,105 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
      * Каждый слушатель получает все необходимые зависимости через конструктор.
      */
     private void registerListeners() {
+        // Block Place Tracking (exploit protection)
+        blockPlaceListener = new BlockPlaceListener(this, placedBlockTracker);
+        blockPlaceListener.register(getEntityStoreRegistry());
+
         // Mob Kills
         mobKillListener = new MobKillListener(
                 this, rewardCalculator, economyBridge,
                 multiplierResolver, antiFarmManager, cooldownTracker
         );
-        mobKillListener.register(getEventRegistry(), rpgBridge);
+        mobKillListener.register(getEventRegistry(), levelBridge, getEntityStoreRegistry());
 
         // Mining
         miningListener = new MiningListener(
                 this, rewardCalculator, economyBridge,
-                multiplierResolver, antiFarmManager, cooldownTracker
+                multiplierResolver, antiFarmManager, cooldownTracker,
+                placedBlockTracker
         );
         miningListener.register(getEntityStoreRegistry());
 
         // Woodcutting
         woodcuttingListener = new WoodcuttingListener(
                 this, rewardCalculator, economyBridge,
-                multiplierResolver, antiFarmManager, cooldownTracker
+                multiplierResolver, antiFarmManager, cooldownTracker,
+                placedBlockTracker
         );
         woodcuttingListener.register(getEntityStoreRegistry());
 
         // Farming
         farmingListener = new FarmingListener(
                 this, rewardCalculator, economyBridge,
-                multiplierResolver, antiFarmManager, cooldownTracker
+                multiplierResolver, antiFarmManager, cooldownTracker,
+                placedBlockTracker
         );
         farmingListener.register(getEntityStoreRegistry());
+    }
+
+    /**
+     * Регистрирует PlayerReadyEvent для кеширования Player-объектов.
+     * Необходимо для отправки actionbar-уведомлений (Player.sendActionBar).
+     */
+    @SuppressWarnings("unchecked")
+    private void registerPlayerTracking() {
+        String[] candidates = {
+                "com.hypixel.hytale.server.core.event.events.player.PlayerReadyEvent",
+                "com.hypixel.hytale.event.server.PlayerReadyEvent",
+        };
+
+        ClassLoader serverLoader = getClass().getClassLoader();
+        com.hypixel.hytale.event.EventRegistry eventRegistry = getEventRegistry();
+
+        for (String className : candidates) {
+            try {
+                Class<?> eventClass = Class.forName(className, true, serverLoader);
+                java.lang.reflect.Method registerMethod = eventRegistry.getClass()
+                        .getMethod("registerGlobal", Class.class, java.util.function.Consumer.class);
+
+                java.util.function.Consumer<Object> handler = event -> {
+                    try {
+                        Object player = extractPlayer(event);
+                        if (player instanceof com.hypixel.hytale.server.core.entity.entities.Player p) {
+                            java.util.UUID uuid = p.getUuid();
+                            if (uuid != null) {
+                                com.crystalrealm.ecotaleincome.util.MessageUtil.cachePlayer(uuid, p);
+                            }
+                        }
+                    } catch (Exception e) {
+                        LOGGER.debug("Failed to cache player from event: {}", e.getMessage());
+                    }
+                };
+
+                registerMethod.invoke(eventRegistry, eventClass, handler);
+                LOGGER.info("Player tracking registered via {} — actionbar notifications enabled.", className);
+                return;
+
+            } catch (ClassNotFoundException ignored) {
+            } catch (Exception e) {
+                LOGGER.debug("Could not register player tracking via {}: {}", className, e.getMessage());
+            }
+        }
+
+        LOGGER.warn("PlayerReadyEvent not found — actionbar notifications will fall back to chat.");
+    }
+
+    /**
+     * Извлекает Player из события через reflection.
+     */
+    @javax.annotation.Nullable
+    private static Object extractPlayer(@javax.annotation.Nonnull Object event) {
+        for (String methodName : new String[]{"getPlayer", "getSource"}) {
+            try {
+                java.lang.reflect.Method getter = event.getClass().getMethod(methodName);
+                Object result = getter.invoke(event);
+                if (result instanceof com.hypixel.hytale.server.core.entity.entities.Player) {
+                    return result;
+                }
+            } catch (NoSuchMethodException ignored) {
+            } catch (Exception e) { break; }
+        }
+        return null;
     }
 
     /**
@@ -233,6 +329,11 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
     private void cleanupCaches() {
         if (antiFarmManager != null) antiFarmManager.cleanup();
         if (cooldownTracker != null) cooldownTracker.cleanup();
+        if (placedBlockTracker != null) {
+            long expireMs = configManager.getConfig().getProtection()
+                    .getPlacedBlockExpireMinutes() * 60_000L;
+            placedBlockTracker.cleanup(expireMs);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -241,7 +342,7 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
 
     @Nonnull
     public String getVersion() {
-        return "1.1.1";
+        return "1.3.0";
     }
 
     @Nonnull
@@ -259,10 +360,10 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
         return economyBridge;
     }
 
-    /** @return мост к RPG Leveling; {@code null} если RPG Leveling не установлен */
-    @Nullable
-    public RPGLevelingBridge getRPGBridge() {
-        return rpgBridge;
+    /** @return мост к системе уровней; всегда non-null, но isAvailable() может быть false */
+    @Nonnull
+    public LevelBridge getLevelBridge() {
+        return levelBridge;
     }
 
     @Nonnull
@@ -288,5 +389,10 @@ public class EcoTaleIncomePlugin extends JavaPlugin {
     @Nonnull
     public LangManager getLangManager() {
         return langManager;
+    }
+
+    @javax.annotation.Nullable
+    public RewardAggregator getRewardAggregator() {
+        return rewardAggregator;
     }
 }

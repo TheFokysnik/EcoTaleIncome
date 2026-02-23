@@ -58,8 +58,12 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
         addSubCommand(new ReloadSubCommand());
         addSubCommand(new DebugSubCommand());
         addSubCommand(new LangSubCommand());
-        addSubCommand(new LangEnSubCommand());
-        addSubCommand(new LangRuSubCommand());
+        addSubCommand(new LangSwitchSubCommand("langen", "en", "Switch to English"));
+        addSubCommand(new LangSwitchSubCommand("langru", "ru", "Переключить на русский"));
+        addSubCommand(new LangSwitchSubCommand("langpt_br", "pt_br", "Mudar para Português"));
+        addSubCommand(new LangSwitchSubCommand("langfr", "fr", "Passer au Français"));
+        addSubCommand(new LangSwitchSubCommand("langde", "de", "Zu Deutsch wechseln"));
+        addSubCommand(new LangSwitchSubCommand("langes", "es", "Cambiar a Español"));
         addSubCommand(new HelpSubCommand());
     }
 
@@ -125,7 +129,7 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
             }
 
             IncomeConfig config = plugin.getConfigManager().getConfig();
-            boolean rpgAvailable = plugin.getRPGBridge() != null && plugin.getRPGBridge().isAvailable();
+            boolean rpgAvailable = plugin.getLevelBridge() != null && plugin.getLevelBridge().isAvailable();
 
             context.sendMessage(msg(L(sender, "cmd.info.header")));
             context.sendMessage(msg(L(sender, "cmd.info.version", "version", plugin.getVersion())));
@@ -269,30 +273,19 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
         }
     }
 
-    private class LangEnSubCommand extends AbstractAsyncCommand {
-        LangEnSubCommand() { super("langen", "Switch to English"); }
+    private class LangSwitchSubCommand extends AbstractAsyncCommand {
+        private final String langCode;
 
-        @Override
-        public CompletableFuture<Void> executeAsync(CommandContext context) {
-            if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
-            CommandSender sender = context.sender();
-            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), "en")) {
-                context.sendMessage(msg(L(sender, "cmd.lang.changed")));
-            } else {
-                context.sendMessage(msg(L(sender, "cmd.lang.invalid")));
-            }
-            return CompletableFuture.completedFuture(null);
+        LangSwitchSubCommand(String name, String langCode, String description) {
+            super(name, description);
+            this.langCode = langCode;
         }
-    }
-
-    private class LangRuSubCommand extends AbstractAsyncCommand {
-        LangRuSubCommand() { super("langru", "Switch to Russian"); }
 
         @Override
         public CompletableFuture<Void> executeAsync(CommandContext context) {
             if (!context.isPlayer()) return CompletableFuture.completedFuture(null);
             CommandSender sender = context.sender();
-            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), "ru")) {
+            if (plugin.getLangManager().setPlayerLang(sender.getUuid(), langCode)) {
                 context.sendMessage(msg(L(sender, "cmd.lang.changed")));
             } else {
                 context.sendMessage(msg(L(sender, "cmd.lang.invalid")));
@@ -345,7 +338,9 @@ public class IncomeCommandCollection extends AbstractCommandCollection {
 
     /** Keywords that are command/subcommand names (not real arguments). */
     private static final java.util.Set<String> COMMAND_KEYWORDS = java.util.Set.of(
-            "income", "status", "info", "stats", "reload", "debug", "lang", "langen", "langru", "help"
+            "income", "status", "info", "stats", "reload", "debug", "lang",
+            "langen", "langru", "langpt_br", "langfr", "langde", "langes",
+            "help"
     );
 
     /**

@@ -6,7 +6,10 @@
     "AllowedWorlds": [],
     "MessagePrefix": "<dark_gray>[<gold>$<dark_gray>]",
     "NotifyOnReward": true,
-    "NotifyFormat": "<green>+{amount} <dark_gray>• <gray>{source}"
+    "NotifyFormat": "<green>+{amount} <dark_gray>• <gray>{source}",
+    "NotifyMode": "popup",
+    "AggregateWindowMs": 1500,
+    "RoundToWholeNumbers": false
   },
 
   "MobKills": {
@@ -148,6 +151,8 @@
   "Protection": {
     "MaxRewardsPerMinute": 60,
     "SameBlockCooldownMs": 500,
+    "DenyPlayerPlacedBlocks": true,
+    "PlacedBlockExpireMinutes": 30,
     "AntiFarm": {
       "Enabled": true,
       "WindowSeconds": 120,

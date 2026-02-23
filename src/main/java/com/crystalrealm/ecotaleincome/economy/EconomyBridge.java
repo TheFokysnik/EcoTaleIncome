@@ -30,6 +30,7 @@ public class EconomyBridge {
     public EconomyBridge() {
         // Register built-in provider
         registerProvider("ecotale", new EcotaleProvider());
+        registerProvider("economyapi", new EconomyApiProvider());
     }
 
     /**
